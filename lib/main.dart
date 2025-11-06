@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
-import 'services/auth_service.dart';
 import 'providers/auth_provider.dart';
-import 'screens/auth/login_screen.dart';
+import 'providers/semester_provider.dart';
+import 'providers/course_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -26,6 +26,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SemesterProvider()),
+        ChangeNotifierProvider(create: (_) => CourseProvider()),
       ],
       child: MaterialApp(
         title: 'Educate Classroom',

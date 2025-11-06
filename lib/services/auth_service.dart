@@ -16,34 +16,61 @@ class AuthService {
   // Login with email and password
   Future<UserModel?> signIn(String email, String password) async {
     try {
-      // Special handling for admin credentials
+      print('AuthService.signIn called with email: $email');
+      
       String loginEmail = email;
+      String loginPassword = password;
+      
+      // Special handling for admin credentials
       if (email == AppConstants.adminEmail) {
+        print('Admin login detected');
         loginEmail = AppConstants.adminEmailFull;
+        
+        // Allow "admin" as password but use Firebase-compliant password internally
+        if (password == "admin") {
+          loginPassword = AppConstants.adminPassword; // "admin123"
+        }
+        
+        print('Using email: $loginEmail');
         
         // Check if admin account exists, if not create it
         try {
+          print('Attempting to sign in admin...');
           UserCredential result = await _auth.signInWithEmailAndPassword(
             email: loginEmail,
-            password: password,
+            password: loginPassword,
           );
-          return await getUserData(result.user!.uid);
-        } catch (e) {
+          print('Admin sign in successful, UID: ${result.user?.uid}');
+          
+          UserModel? userData = await getUserData(result.user!.uid);
+          print('User data retrieved: ${userData?.displayName}');
+          return userData;
+        } on FirebaseAuthException catch (e) {
+          print('Firebase auth error: ${e.code} - ${e.message}');
+          
           // Admin doesn't exist, create it
-          if (password == AppConstants.adminPassword) {
-            return await _createAdminAccount();
+          if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+            if (password == "admin" || password == AppConstants.adminPassword) {
+              print('Creating admin account...');
+              return await _createAdminAccount();
+            }
           }
-          throw 'Invalid admin credentials';
+          throw 'Invalid admin credentials: ${e.message}';
         }
       }
 
       // Regular user login
+      print('Regular user login for: $loginEmail');
       UserCredential result = await _auth.signInWithEmailAndPassword(
         email: loginEmail,
         password: password,
       );
-
+      
+      print('User sign in successful, UID: ${result.user?.uid}');
       return await getUserData(result.user!.uid);
+    } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code} - ${e.message}');
+      throw 'Authentication error: ${e.message ?? e.code}';
     } catch (e) {
       print('Sign in error: $e');
       rethrow;
@@ -53,10 +80,14 @@ class AuthService {
   // Create admin account (first time only)
   Future<UserModel> _createAdminAccount() async {
     try {
+      print('Creating new admin account...');
+      
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: AppConstants.adminEmailFull,
-        password: AppConstants.adminPassword,
+        password: AppConstants.adminPassword, // "admin123"
       );
+
+      print('Admin account created, UID: ${result.user?.uid}');
 
       UserModel adminUser = UserModel(
         uid: result.user!.uid,
@@ -66,12 +97,17 @@ class AuthService {
         createdAt: DateTime.now(),
       );
 
+      print('Saving admin user data to Firestore...');
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(result.user!.uid)
           .set(adminUser.toMap());
 
+      print('Admin user data saved successfully');
       return adminUser;
+    } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException creating admin: ${e.code} - ${e.message}');
+      throw 'Failed to create admin account: ${e.message ?? e.code}';
     } catch (e) {
       print('Create admin error: $e');
       rethrow;
@@ -81,15 +117,22 @@ class AuthService {
   // Get user data from Firestore
   Future<UserModel?> getUserData(String uid) async {
     try {
+      print('Getting user data for UID: $uid');
+      
       DocumentSnapshot doc = await _firestore
           .collection(AppConstants.usersCollection)
           .doc(uid)
           .get();
 
       if (doc.exists) {
-        return UserModel.fromMap(doc.data() as Map<String, dynamic>);
+        print('User document found');
+        UserModel user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+        print('User parsed: ${user.displayName}, role: ${user.role}');
+        return user;
+      } else {
+        print('User document not found in Firestore');
+        return null;
       }
-      return null;
     } catch (e) {
       print('Get user data error: $e');
       return null;
@@ -109,6 +152,11 @@ class AuthService {
     String? studentId,
   }) async {
     try {
+      // Ensure password is at least 6 characters
+      if (password.length < 6) {
+        throw 'Password must be at least 6 characters';
+      }
+      
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
