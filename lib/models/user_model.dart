@@ -7,6 +7,7 @@ class UserModel {
   final String role; // 'instructor' or 'student'
   final String? avatarUrl;
   final String? studentId;
+  final bool isActive; 
   final DateTime createdAt;
 
   UserModel({
@@ -16,6 +17,7 @@ class UserModel {
     required this.role,
     this.avatarUrl,
     this.studentId,
+    this.isActive = true,
     required this.createdAt,
   });
 
@@ -28,6 +30,7 @@ class UserModel {
       'role': role,
       'avatarUrl': avatarUrl,
       'studentId': studentId,
+      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -41,6 +44,7 @@ class UserModel {
       role: map['role'] ?? '',
       avatarUrl: map['avatarUrl'],
       studentId: map['studentId'],
+      isActive: map['isActive'] ?? true,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
     );
   }
@@ -53,6 +57,7 @@ class UserModel {
     String? role,
     String? avatarUrl,
     String? studentId,
+    bool? isActive,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -62,6 +67,7 @@ class UserModel {
       role: role ?? this.role,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       studentId: studentId ?? this.studentId,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
     );
   }

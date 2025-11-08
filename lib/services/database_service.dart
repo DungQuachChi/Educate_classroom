@@ -337,16 +337,22 @@ class DatabaseService {
   // ==================== STUDENT OPERATIONS ====================
 
   // Get all students
-  Stream<List<UserModel>> getStudents() {
-    return _firestore
-        .collection(AppConstants.usersCollection)
-        .where('role', isEqualTo: AppConstants.roleStudent)
-        .orderBy('displayName')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
+Stream<List<UserModel>> getStudents() {
+  return _firestore
+      .collection(AppConstants.usersCollection)
+      .where('role', isEqualTo: AppConstants.roleStudent)
+      .where('isActive', isEqualTo: true) // ← Only active students
+      .snapshots()
+      .map((snapshot) {
+        var students = snapshot.docs
             .map((doc) => UserModel.fromMap(doc.data()))
-            .toList());
-  }
+            .toList();
+        
+        students.sort((a, b) => a.displayName.compareTo(b.displayName));
+        
+        return students;
+      });
+}
 
   // Get students by IDs
   Future<List<UserModel>> getStudentsByIds(List<String> studentIds) async {
@@ -394,7 +400,7 @@ class DatabaseService {
     }
   }
 
-  // Delete student
+// Delete student
   Future<void> deleteStudent(String userId) async {
     try {
       // Remove student from all groups
@@ -409,14 +415,17 @@ class DatabaseService {
         });
       }
 
-      // Delete student document
+      // Mark as inactive instead of deleting
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(userId)
-          .delete();
+          .update({
+        'isActive': false,
+        'deletedAt': FieldValue.serverTimestamp(),
+      });
 
-      // Note: Firebase Auth user deletion requires admin SDK or re-authentication
-      // For now, we just delete the Firestore document
+      // Note: Firebase Auth user still exists but can't login 
+      // because we check isActive in auth flow
     } catch (e) {
       print('Delete student error: $e');
       rethrow;

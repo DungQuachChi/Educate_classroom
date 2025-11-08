@@ -115,29 +115,37 @@ class AuthService {
   }
 
   // Get user data from Firestore
-  Future<UserModel?> getUserData(String uid) async {
-    try {
-      print('Getting user data for UID: $uid');
-      
-      DocumentSnapshot doc = await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
+// Get user data from Firestore
+Future<UserModel?> getUserData(String uid) async {
+  try {
+    print('Getting user data for UID: $uid');
+    
+    DocumentSnapshot doc = await _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(uid)
+        .get();
 
-      if (doc.exists) {
-        print('User document found');
-        UserModel user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-        print('User parsed: ${user.displayName}, role: ${user.role}');
-        return user;
-      } else {
-        print('User document not found in Firestore');
-        return null;
+    if (doc.exists) {
+      print('User document found');
+      UserModel user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+      print('User parsed: ${user.displayName}, role: ${user.role}');
+      
+      // Check if user is active
+      if (!user.isActive) {
+        print('User account is disabled');
+        throw 'This account has been disabled. Please contact administrator.';
       }
-    } catch (e) {
-      print('Get user data error: $e');
+      
+      return user;
+    } else {
+      print('User document not found in Firestore');
       return null;
     }
+  } catch (e) {
+    print('Get user data error: $e');
+    rethrow;
   }
+}
 
   // Sign out
   Future<void> signOut() async {
