@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/semester_provider.dart';
 import '../auth/login_screen.dart';
 import 'semester_management_screen.dart';
+import 'course_management_screen.dart';
 
 class InstructorHomeScreen extends StatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -104,10 +105,15 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                         _DashboardCard(
                           icon: Icons.book,
                           title: 'Courses',
-                          subtitle: 'Coming soon',
+                          subtitle: 'Manage courses',
                           color: Colors.green,
                           onTap: () {
-                            // TODO: Navigate to course management
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CourseManagementScreen(),
+                              ),
+                            );
                           },
                         ),
                         _DashboardCard(

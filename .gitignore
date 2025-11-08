@@ -41,8 +41,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# ⚠️ IMPORTANT: Firebase Configuration Files
-# Add these lines to protect your API keys
+# Sensitive files
 lib/firebase_options.dart
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
