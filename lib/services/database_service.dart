@@ -376,4 +376,50 @@ class DatabaseService {
       return [];
     }
   }
+
+   // Update student
+  Future<void> updateStudent(UserModel student) async {
+    try {
+      await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(student.uid)
+          .update({
+        'displayName': student.displayName,
+        'studentId': student.studentId,
+        'avatarUrl': student.avatarUrl,
+      });
+    } catch (e) {
+      print('Update student error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete student
+  Future<void> deleteStudent(String userId) async {
+    try {
+      // Remove student from all groups
+      QuerySnapshot groups = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('studentIds', arrayContains: userId)
+          .get();
+
+      for (var group in groups.docs) {
+        await group.reference.update({
+          'studentIds': FieldValue.arrayRemove([userId]),
+        });
+      }
+
+      // Delete student document
+      await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(userId)
+          .delete();
+
+      // Note: Firebase Auth user deletion requires admin SDK or re-authentication
+      // For now, we just delete the Firestore document
+    } catch (e) {
+      print('Delete student error: $e');
+      rethrow;
+    }
+  }
 }

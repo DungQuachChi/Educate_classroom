@@ -45,6 +45,27 @@ class UserModel {
     );
   }
 
+  // Copy with method for updates
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? displayName,
+    String? role,
+    String? avatarUrl,
+    String? studentId,
+    DateTime? createdAt,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      role: role ?? this.role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      studentId: studentId ?? this.studentId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   // Check if user is instructor
   bool get isInstructor => role == 'instructor';
   

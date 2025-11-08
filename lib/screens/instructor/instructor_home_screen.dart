@@ -1,3 +1,4 @@
+import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -119,10 +120,15 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                         _DashboardCard(
                           icon: Icons.group,
                           title: 'Students',
-                          subtitle: 'Coming soon',
+                          subtitle: 'Manage students',
                           color: Colors.orange,
                           onTap: () {
-                            // TODO: Navigate to student management
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const StudentManagementScreen(),
+                              ),
+                            );
                           },
                         ),
                         _DashboardCard(
