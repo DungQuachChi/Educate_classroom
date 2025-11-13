@@ -7,7 +7,7 @@ import '../../providers/semester_provider.dart';
 import '../../models/assignment_model.dart';
 import '../../models/course_model.dart';
 import 'assignment_form_screen.dart';
-import 'assignment_submissions_screen.dart';
+import 'assignment_tracking_screen.dart';
 
 class AssignmentManagementScreen extends StatefulWidget {
   const AssignmentManagementScreen({super.key});
@@ -41,9 +41,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       body: Consumer3<SemesterProvider, CourseProvider, AssignmentProvider>(
         builder: (context, semesterProvider, courseProvider, assignmentProvider, child) {
           if (semesterProvider.currentSemester == null) {
-            return const Center(
-              child: Text('Please create a semester first'),
-            );
+            return const Center(child: Text('Please create a semester first'));
           }
 
           if (courseProvider.isLoading) {
@@ -77,10 +75,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                   children: [
                     Text(
                       'Select Course',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<CourseModel>(
@@ -99,9 +94,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                         );
                       }).toList(),
                       onChanged: (course) {
-                        setState(() {
-                          _selectedCourse = course;
-                        });
+                        setState(() => _selectedCourse = course);
                         if (course != null) {
                           assignmentProvider.loadAssignmentsByCourse(course.id);
                         }
@@ -114,9 +107,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
               // Assignments List
               Expanded(
                 child: _selectedCourse == null
-                    ? const Center(
-                        child: Text('Please select a course'),
-                      )
+                    ? const Center(child: Text('Please select a course'))
                     : assignmentProvider.isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : _buildAssignmentsList(assignmentProvider.assignments),
@@ -131,9 +122,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AssignmentFormScreen(
-                      courseId: _selectedCourse!.id,
-                    ),
+                    builder: (_) => AssignmentFormScreen(courseId: _selectedCourse!.id),
                   ),
                 );
               },
@@ -150,19 +139,9 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.assignment,
-              size: 80,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.assignment, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text(
-              'No assignments yet',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
-            ),
+            Text('No assignments yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
           ],
         ),
       );
@@ -185,10 +164,7 @@ class _AssignmentCard extends StatelessWidget {
   final AssignmentModel assignment;
   final String courseId;
 
-  const _AssignmentCard({
-    required this.assignment,
-    required this.courseId,
-  });
+  const _AssignmentCard({required this.assignment, required this.courseId});
 
   @override
   Widget build(BuildContext context) {
@@ -196,16 +172,17 @@ class _AssignmentCard extends StatelessWidget {
 
     Color statusColor = Colors.green;
     IconData statusIcon = Icons.check_circle;
-    String statusText = 'Active';
+    String statusText = assignment.statusText;
 
-    if (assignment.isOverdue) {
+    if (assignment.isPastLateDeadline) {
+      statusColor = Colors.grey;
+      statusIcon = Icons.lock;
+    } else if (assignment.isOverdue) {
       statusColor = Colors.red;
-      statusIcon = Icons.cancel;
-      statusText = 'Overdue';
+      statusIcon = Icons.warning;
     } else if (assignment.isDueSoon) {
       statusColor = Colors.orange;
-      statusIcon = Icons.warning;
-      statusText = 'Due Soon';
+      statusIcon = Icons.timer;
     }
 
     return Card(
@@ -216,7 +193,7 @@ class _AssignmentCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => AssignmentSubmissionsScreen(assignment: assignment),
+              builder: (_) => AssignmentTrackingScreen(assignment: assignment),
             ),
           );
         },
@@ -231,10 +208,7 @@ class _AssignmentCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       assignment.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                   PopupMenuButton<String>(
@@ -251,11 +225,11 @@ class _AssignmentCard extends StatelessWidget {
                             ),
                           );
                           break;
-                        case 'submissions':
+                        case 'track':
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AssignmentSubmissionsScreen(assignment: assignment),
+                              builder: (_) => AssignmentTrackingScreen(assignment: assignment),
                             ),
                           );
                           break;
@@ -266,12 +240,12 @@ class _AssignmentCard extends StatelessWidget {
                     },
                     itemBuilder: (context) => [
                       const PopupMenuItem(
-                        value: 'submissions',
+                        value: 'track',
                         child: Row(
                           children: [
-                            Icon(Icons.list, size: 20),
+                            Icon(Icons.list_alt, size: 20),
                             SizedBox(width: 8),
-                            Text('View Submissions'),
+                            Text('Track Submissions'),
                           ],
                         ),
                       ),
@@ -302,45 +276,75 @@ class _AssignmentCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 assignment.description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
                 children: [
-                  Icon(statusIcon, size: 16, color: statusColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    statusText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 16, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(statusText, style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Due: ${DateFormat('MMM dd, yyyy HH:mm').format(assignment.dueDate)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Start: ${DateFormat('MMM dd, HH:mm').format(assignment.startDate)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.grade, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${assignment.maxScore} pts',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Due: ${DateFormat('MMM dd, HH:mm').format(assignment.dueDate)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  if (assignment.allowLateSubmission && assignment.lateDeadline != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: Colors.orange[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Late: ${DateFormat('MMM dd, HH:mm').format(assignment.lateDeadline!)}',
+                          style: TextStyle(fontSize: 12, color: Colors.orange[600]),
+                        ),
+                      ],
                     ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.repeat, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Max ${assignment.maxAttempts == 0 ? '∞' : assignment.maxAttempts} attempt${assignment.maxAttempts != 1 ? 's' : ''}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.grade, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text('${assignment.maxScore} pts', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    ],
                   ),
                 ],
               ),
@@ -356,35 +360,23 @@ class _AssignmentCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Assignment'),
-        content: Text(
-          'Are you sure you want to delete "${assignment.title}"?\n\n'
-          'All submissions will also be deleted.',
-        ),
+        content: Text('Delete "${assignment.title}"?\n\nAll submissions will be deleted.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-
               try {
                 await provider.deleteAssignment(assignment.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Assignment deleted successfully'),
-                    ),
+                    const SnackBar(content: Text('Assignment deleted')),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $e'),
-                      backgroundColor: Colors.red,
-                    ),
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
                   );
                 }
               }

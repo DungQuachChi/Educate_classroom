@@ -24,7 +24,9 @@ class AssignmentProvider with ChangeNotifier {
     
     _assignmentSubscription?.cancel();
 
-    _assignmentSubscription = _databaseService.getAssignmentsByCourse(courseId).listen((assignments) {
+    _assignmentSubscription = _databaseService
+        .getAssignmentsByCourse(courseId)
+        .listen((assignments) {
       _assignments = assignments;
       _isLoading = false;
       
@@ -62,26 +64,89 @@ class AssignmentProvider with ChangeNotifier {
   }
 
   // Submit assignment
-  Future<String> submitAssignment(SubmissionModel submission) async {
+  Future<String> submitAssignment({
+    required String assignmentId,
+    required String studentId,
+    required AssignmentModel assignment,
+    String? content,
+    List<String>? attachmentUrls,
+  }) async {
     try {
-      return await _databaseService.createSubmission(submission);
+      return await _databaseService.submitAssignment(
+        assignmentId: assignmentId,
+        studentId: studentId,
+        assignment: assignment,
+        content: content,
+        attachmentUrls: attachmentUrls,
+      );
     } catch (e) {
       rethrow;
     }
   }
 
-  // Get submissions for an assignment
-  Stream<List<SubmissionModel>> getSubmissions(String assignmentId) {
-    return _databaseService.getSubmissionsByAssignment(assignmentId);
+  // Get submission history
+  Future<List<SubmissionModel>> getSubmissionHistory(
+    String assignmentId,
+    String studentId,
+  ) async {
+    try {
+      return await _databaseService.getStudentSubmissionHistory(
+        assignmentId,
+        studentId,
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Get all submissions
+  Future<List<SubmissionModel>> getAllSubmissions(String assignmentId) async {
+    try {
+      return await _databaseService.getAllSubmissionsForAssignment(assignmentId);
+    } catch (e) {
+      return [];
+    }
   }
 
   // Grade submission
-  Future<void> gradeSubmission(String submissionId, int score, String? feedback) async {
+  Future<void> gradeSubmission({
+    required String submissionId,
+    required int score,
+    String? feedback,
+    required String gradedBy,
+  }) async {
     try {
-      await _databaseService.gradeSubmission(submissionId, score, feedback);
+      await _databaseService.gradeSubmission(
+        submissionId: submissionId,
+        score: score,
+        feedback: feedback,
+        gradedBy: gradedBy,
+      );
     } catch (e) {
       rethrow;
     }
+  }
+
+  // Export to CSV
+  Future<String> exportToCSV(
+    String assignmentId,
+    AssignmentModel assignment,
+  ) async {
+    try {
+      return await _databaseService.exportSubmissionsToCSV(
+        assignmentId,
+        assignment,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  void clear() {
+    _assignments = [];
+    _currentCourseId = null;
+    _assignmentSubscription?.cancel();
+    notifyListeners();
   }
 
   @override

@@ -5,10 +5,16 @@ class AssignmentModel {
   final String title;
   final String description;
   final String courseId;
-  final String? groupId; // Optional: assign to specific group
+  final List<String> groupIds; 
+  final DateTime startDate; 
   final DateTime dueDate;
+  final bool allowLateSubmission;
+  final DateTime? lateDeadline; 
+  final int maxAttempts;
+  final List<String> allowedFileFormats; 
+  final int maxFileSizeMB; 
+  final List<String> attachmentUrls; 
   final int maxScore;
-  final List<String> attachmentUrls;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -17,10 +23,16 @@ class AssignmentModel {
     required this.title,
     required this.description,
     required this.courseId,
-    this.groupId,
+    this.groupIds = const [],
+    required this.startDate,
     required this.dueDate,
-    this.maxScore = 100,
+    this.allowLateSubmission = false,
+    this.lateDeadline,
+    this.maxAttempts = 1,
+    this.allowedFileFormats = const [],
+    this.maxFileSizeMB = 10,
     this.attachmentUrls = const [],
+    this.maxScore = 100,
     required this.createdAt,
     this.updatedAt,
   });
@@ -32,10 +44,16 @@ class AssignmentModel {
       'title': title,
       'description': description,
       'courseId': courseId,
-      'groupId': groupId,
+      'groupIds': groupIds,
+      'startDate': Timestamp.fromDate(startDate),
       'dueDate': Timestamp.fromDate(dueDate),
-      'maxScore': maxScore,
+      'allowLateSubmission': allowLateSubmission,
+      'lateDeadline': lateDeadline != null ? Timestamp.fromDate(lateDeadline!) : null,
+      'maxAttempts': maxAttempts,
+      'allowedFileFormats': allowedFileFormats,
+      'maxFileSizeMB': maxFileSizeMB,
       'attachmentUrls': attachmentUrls,
+      'maxScore': maxScore,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };
@@ -48,10 +66,18 @@ class AssignmentModel {
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       courseId: map['courseId'] ?? '',
-      groupId: map['groupId'],
+      groupIds: List<String>.from(map['groupIds'] ?? []),
+      startDate: (map['startDate'] as Timestamp).toDate(),
       dueDate: (map['dueDate'] as Timestamp).toDate(),
-      maxScore: map['maxScore'] ?? 100,
+      allowLateSubmission: map['allowLateSubmission'] ?? false,
+      lateDeadline: map['lateDeadline'] != null 
+          ? (map['lateDeadline'] as Timestamp).toDate() 
+          : null,
+      maxAttempts: map['maxAttempts'] ?? 1,
+      allowedFileFormats: List<String>.from(map['allowedFileFormats'] ?? []),
+      maxFileSizeMB: map['maxFileSizeMB'] ?? 10,
       attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
+      maxScore: map['maxScore'] ?? 100,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: map['updatedAt'] != null 
           ? (map['updatedAt'] as Timestamp).toDate() 
@@ -65,10 +91,16 @@ class AssignmentModel {
     String? title,
     String? description,
     String? courseId,
-    String? groupId,
+    List<String>? groupIds,
+    DateTime? startDate,
     DateTime? dueDate,
-    int? maxScore,
+    bool? allowLateSubmission,
+    DateTime? lateDeadline,
+    int? maxAttempts,
+    List<String>? allowedFileFormats,
+    int? maxFileSizeMB,
     List<String>? attachmentUrls,
+    int? maxScore,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -77,22 +109,54 @@ class AssignmentModel {
       title: title ?? this.title,
       description: description ?? this.description,
       courseId: courseId ?? this.courseId,
-      groupId: groupId ?? this.groupId,
+      groupIds: groupIds ?? this.groupIds,
+      startDate: startDate ?? this.startDate,
       dueDate: dueDate ?? this.dueDate,
-      maxScore: maxScore ?? this.maxScore,
+      allowLateSubmission: allowLateSubmission ?? this.allowLateSubmission,
+      lateDeadline: lateDeadline ?? this.lateDeadline,
+      maxAttempts: maxAttempts ?? this.maxAttempts,
+      allowedFileFormats: allowedFileFormats ?? this.allowedFileFormats,
+      maxFileSizeMB: maxFileSizeMB ?? this.maxFileSizeMB,
       attachmentUrls: attachmentUrls ?? this.attachmentUrls,
+      maxScore: maxScore ?? this.maxScore,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
-  // Check if assignment is overdue
+  // Check if assignment has started
+  bool get hasStarted => DateTime.now().isAfter(startDate);
+
+  // Check if assignment is overdue (past due date)
   bool get isOverdue => DateTime.now().isAfter(dueDate);
+
+  // Check if assignment is past late deadline
+  bool get isPastLateDeadline {
+    if (!allowLateSubmission || lateDeadline == null) return isOverdue;
+    return DateTime.now().isAfter(lateDeadline!);
+  }
+
+  // Check if can submit now
+  bool get canSubmit {
+    if (!hasStarted) return false;
+    if (!allowLateSubmission) return !isOverdue;
+    return !isPastLateDeadline;
+  }
 
   // Check if assignment is due soon (within 24 hours)
   bool get isDueSoon {
     final now = DateTime.now();
     final difference = dueDate.difference(now);
     return difference.inHours <= 24 && difference.inHours > 0;
+  }
+
+  // Get status text
+  String get statusText {
+    if (!hasStarted) return 'Not started';
+    if (isPastLateDeadline) return 'Closed';
+    if (isOverdue && allowLateSubmission) return 'Late submission allowed';
+    if (isOverdue) return 'Overdue';
+    if (isDueSoon) return 'Due soon';
+    return 'Active';
   }
 }
