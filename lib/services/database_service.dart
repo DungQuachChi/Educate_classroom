@@ -6,6 +6,9 @@ import '../models/course_model.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -436,12 +439,11 @@ Stream<List<UserModel>> getStudents() {
   // ==================== ASSIGNMENT OPERATIONS ====================
 
   // Create assignment
-Future<String> createAssignment(AssignmentModel assignment) async {
+  Future<String> createAssignment(AssignmentModel assignment) async {
     try {
       DocumentReference doc = await _firestore
           .collection(AppConstants.assignmentsCollection)
           .add(assignment.toMap());
-
       return doc.id;
     } catch (e) {
       print('Create assignment error: $e');
@@ -454,29 +456,11 @@ Future<String> createAssignment(AssignmentModel assignment) async {
     return _firestore
         .collection(AppConstants.assignmentsCollection)
         .where('courseId', isEqualTo: courseId)
-        .orderBy('createdAt', descending: true)
+        .orderBy('startDate', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => AssignmentModel.fromMap(doc.data(), doc.id))
             .toList());
-  }
-
-  // Get single assignment
-  Future<AssignmentModel?> getAssignment(String assignmentId) async {
-    try {
-      DocumentSnapshot doc = await _firestore
-          .collection(AppConstants.assignmentsCollection)
-          .doc(assignmentId)
-          .get();
-
-      if (doc.exists) {
-        return AssignmentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }
-      return null;
-    } catch (e) {
-      print('Get assignment error: $e');
-      return null;
-    }
   }
 
   // Update assignment
@@ -495,14 +479,14 @@ Future<String> createAssignment(AssignmentModel assignment) async {
   // Delete assignment
   Future<void> deleteAssignment(String assignmentId) async {
     try {
-      // Delete all submissions for this assignment
+      // Delete all submissions
       QuerySnapshot submissions = await _firestore
           .collection(AppConstants.submissionsCollection)
           .where('assignmentId', isEqualTo: assignmentId)
           .get();
 
-      for (var submission in submissions.docs) {
-        await submission.reference.delete();
+      for (var doc in submissions.docs) {
+        await doc.reference.delete();
       }
 
       // Delete assignment
@@ -518,70 +502,110 @@ Future<String> createAssignment(AssignmentModel assignment) async {
 
   // ==================== SUBMISSION OPERATIONS ====================
 
-  // Submit assignment
-  Future<String> createSubmission(SubmissionModel submission) async {
+  // Submit assignment with attempt tracking
+  Future<String> submitAssignment({
+    required String assignmentId,
+    required String studentId,
+    required AssignmentModel assignment,
+    String? content,
+    List<String>? attachmentUrls,
+  }) async {
     try {
-      // Check if student already submitted
-      QuerySnapshot existing = await _firestore
-          .collection(AppConstants.submissionsCollection)
-          .where('assignmentId', isEqualTo: submission.assignmentId)
-          .where('studentId', isEqualTo: submission.studentId)
-          .limit(1)
-          .get();
+      // Get previous submissions
+      final history = await getStudentSubmissionHistory(assignmentId, studentId);
+      final attemptNumber = history.length + 1;
 
-      if (existing.docs.isNotEmpty) {
-        // Update existing submission
-        await existing.docs.first.reference.update(submission.toMap());
-        return existing.docs.first.id;
-      } else {
-        // Create new submission
-        DocumentReference doc = await _firestore
-            .collection(AppConstants.submissionsCollection)
-            .add(submission.toMap());
-        return doc.id;
+      // Check max attempts
+      if (assignment.maxAttempts > 0 && attemptNumber > assignment.maxAttempts) {
+        throw 'Maximum attempts (${assignment.maxAttempts}) exceeded';
       }
+
+      // Check timing
+      final now = DateTime.now();
+      if (now.isBefore(assignment.startDate)) {
+        throw 'Assignment has not started yet';
+      }
+
+      final isLate = now.isAfter(assignment.dueDate);
+
+      if (isLate && !assignment.allowLateSubmission) {
+        throw 'Late submissions not allowed';
+      }
+
+      if (isLate && assignment.lateDeadline != null && now.isAfter(assignment.lateDeadline!)) {
+        throw 'Late deadline has passed';
+      }
+
+      // Create submission
+      final submission = SubmissionModel(
+        id: '',
+        assignmentId: assignmentId,
+        studentId: studentId,
+        content: content,
+        attachmentUrls: attachmentUrls ?? [],
+        submittedAt: now,
+        attemptNumber: attemptNumber,
+        isLate: isLate,
+      );
+
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .add(submission.toMap());
+
+      return doc.id;
     } catch (e) {
-      print('Create submission error: $e');
+      print('Submit assignment error: $e');
       rethrow;
     }
   }
 
-  // Get submissions for an assignment
-Stream<List<SubmissionModel>> getSubmissionsByAssignment(String assignmentId) {
-    return _firestore
-        .collection(AppConstants.submissionsCollection)
-        .where('assignmentId', isEqualTo: assignmentId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => SubmissionModel.fromMap(doc.data(), doc.id))
-            .toList());
-  }
-
-  // Get student's submission for an assignment
-  Future<SubmissionModel?> getStudentSubmission(String assignmentId, String studentId) async {
+  // Get student submission history (all attempts)
+  Future<List<SubmissionModel>> getStudentSubmissionHistory(
+    String assignmentId,
+    String studentId,
+  ) async {
     try {
       QuerySnapshot snapshot = await _firestore
           .collection(AppConstants.submissionsCollection)
           .where('assignmentId', isEqualTo: assignmentId)
           .where('studentId', isEqualTo: studentId)
-          .limit(1)
+          .orderBy('attemptNumber')
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        return SubmissionModel.fromMap(
-          snapshot.docs.first.data() as Map<String, dynamic>,
-          snapshot.docs.first.id,
-        );
-      }
-      return null;
+      return snapshot.docs
+          .map((doc) => SubmissionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
     } catch (e) {
-      print('Get student submission error: $e');
-      return null;
+      print('Get submission history error: $e');
+      return [];
+    }
+  }
+
+  // Get all submissions for assignment
+  Future<List<SubmissionModel>> getAllSubmissionsForAssignment(String assignmentId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .orderBy('submittedAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => SubmissionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Get all submissions error: $e');
+      return [];
     }
   }
 
   // Grade submission
-  Future<void> gradeSubmission(String submissionId, int score, String? feedback) async {
+  Future<void> gradeSubmission({
+    required String submissionId,
+    required int score,
+    String? feedback,
+    required String gradedBy,
+  }) async {
     try {
       await _firestore
           .collection(AppConstants.submissionsCollection)
@@ -590,10 +614,317 @@ Stream<List<SubmissionModel>> getSubmissionsByAssignment(String assignmentId) {
         'score': score,
         'feedback': feedback,
         'gradedAt': FieldValue.serverTimestamp(),
+        'gradedBy': gradedBy,
       });
     } catch (e) {
       print('Grade submission error: $e');
       rethrow;
+    }
+  }
+
+  // Get students for assignment (based on groups)
+  Future<List<UserModel>> getStudentsForAssignment(AssignmentModel assignment) async {
+    try {
+      if (assignment.groupIds.isEmpty) {
+        // All students in course - get via all groups in course
+        QuerySnapshot groupSnapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where('courseId', isEqualTo: assignment.courseId)
+            .get();
+
+        Set<String> studentIds = {};
+        for (var doc in groupSnapshot.docs) {
+          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          studentIds.addAll(group.studentIds);
+        }
+
+        return await getStudentsByIds(studentIds.toList());
+      } else {
+        // Specific groups
+        QuerySnapshot groupSnapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where(FieldPath.documentId, whereIn: assignment.groupIds)
+            .get();
+
+        Set<String> studentIds = {};
+        for (var doc in groupSnapshot.docs) {
+          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          studentIds.addAll(group.studentIds);
+        }
+
+        return await getStudentsByIds(studentIds.toList());
+      }
+    } catch (e) {
+      print('Get students for assignment error: $e');
+      return [];
+    }
+  }
+
+  // Export submissions to CSV
+  Future<String> exportSubmissionsToCSV(
+    String assignmentId,
+    AssignmentModel assignment,
+  ) async {
+    try {
+      final submissions = await getAllSubmissionsForAssignment(assignmentId);
+      final students = await getStudentsForAssignment(assignment);
+
+      // Group submissions by student
+      Map<String, List<SubmissionModel>> submissionsByStudent = {};
+      for (var sub in submissions) {
+        if (!submissionsByStudent.containsKey(sub.studentId)) {
+          submissionsByStudent[sub.studentId] = [];
+        }
+        submissionsByStudent[sub.studentId]!.add(sub);
+      }
+
+      // Build CSV
+      StringBuffer csv = StringBuffer();
+      csv.writeln('Student ID,Name,Email,Status,Attempts,Latest Score,Highest Score,Submitted At,Is Late,Feedback');
+
+      for (var student in students) {
+        final subs = submissionsByStudent[student.uid] ?? [];
+        final latest = subs.isNotEmpty ? subs.reduce((a, b) => 
+          a.submittedAt.isAfter(b.submittedAt) ? a : b) : null;
+        
+        final graded = subs.where((s) => s.score != null).toList();
+        final highestScore = graded.isEmpty ? null : 
+          graded.map((s) => s.score!).reduce((a, b) => a > b ? a : b);
+
+        csv.write('"${student.studentId ?? ""}"');
+        csv.write(',"${student.displayName}"');
+        csv.write(',"${student.email}"');
+        csv.write(',${latest == null ? "Not Submitted" : (latest.isGraded ? "Graded" : "Submitted")}');
+        csv.write(',${subs.length}');
+        csv.write(',${latest?.score ?? ""}');
+        csv.write(',${highestScore ?? ""}');
+        csv.write(',${latest?.submittedAt.toIso8601String() ?? ""}');
+        csv.write(',${latest?.isLate ?? false}');
+        csv.writeln(',"${latest?.feedback?.replaceAll('"', '""') ?? ""}"');
+      }
+
+      return csv.toString();
+    } catch (e) {
+      print('Export CSV error: $e');
+      rethrow;
+    }
+  }
+
+    // ==================== STUDENT-SPECIFIC OPERATIONS ====================
+
+  // Get courses that student is enrolled in (via groups)
+  Future<List<CourseModel>> getStudentCourses(String studentId) async {
+    try {
+      // Get all groups that student is in
+      QuerySnapshot groupSnapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('studentIds', arrayContains: studentId)
+          .get();
+
+      if (groupSnapshot.docs.isEmpty) {
+        return [];
+      }
+
+      // Get unique course IDs
+      Set<String> courseIds = {};
+      for (var doc in groupSnapshot.docs) {
+        final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        courseIds.add(group.courseId);
+      }
+
+      // Get courses
+      List<CourseModel> courses = [];
+      for (String courseId in courseIds) {
+        DocumentSnapshot courseDoc = await _firestore
+            .collection(AppConstants.coursesCollection)
+            .doc(courseId)
+            .get();
+
+        if (courseDoc.exists) {
+          courses.add(CourseModel.fromMap(
+            courseDoc.data() as Map<String, dynamic>,
+            courseDoc.id,
+          ));
+        }
+      }
+
+      return courses;
+    } catch (e) {
+      print('Get student courses error: $e');
+      return [];
+    }
+  }
+
+  // Get student assignments
+  Future<List<AssignmentModel>> getStudentAssignments(
+    String studentId,
+    String courseId,
+  ) async {
+    try {
+      // Get student's groups in course
+      QuerySnapshot groupSnapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .where('studentIds', arrayContains: studentId)
+          .get();
+
+      List<String> groupIds = groupSnapshot.docs.map((doc) => doc.id).toList();
+
+      // Get assignments
+      QuerySnapshot assignmentSnapshot = await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .get();
+
+      List<AssignmentModel> assignments = [];
+      for (var doc in assignmentSnapshot.docs) {
+        final assignment = AssignmentModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
+
+        // Include if no groups specified or student is in one of the groups
+        if (assignment.groupIds.isEmpty || 
+            assignment.groupIds.any((gid) => groupIds.contains(gid))) {
+          assignments.add(assignment);
+        }
+      }
+
+      assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      return assignments;
+    } catch (e) {
+      print('Get student assignments error: $e');
+      return [];
+    }
+  }
+
+  // Get student's submissions
+  Stream<List<SubmissionModel>> getStudentSubmissions(String studentId) {
+    return _firestore
+        .collection(AppConstants.submissionsCollection)
+        .where('studentId', isEqualTo: studentId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => SubmissionModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+    // ==================== GROUP HELPER METHODS ====================
+
+  // Get group by ID
+  Future<GroupModel?> getGroupById(String groupId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .doc(groupId)
+          .get();
+
+      if (doc.exists) {
+        return GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+      return null;
+    } catch (e) {
+      print('Get group by ID error: $e');
+      return null;
+    }
+  }
+
+  // Get groups by course
+  Future<List<GroupModel>> getGroupsByCourseAsync(String courseId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Get groups by course error: $e');
+      return [];
+    }
+  }
+
+  // Get student's group names in assignment
+  Future<String> getStudentGroupNames(String studentId, AssignmentModel assignment) async {
+    try {
+      List<GroupModel> groups = [];
+
+      if (assignment.groupIds.isNotEmpty) {
+        // Get specific groups
+        for (String groupId in assignment.groupIds) {
+          final group = await getGroupById(groupId);
+          if (group != null && group.studentIds.contains(studentId)) {
+            groups.add(group);
+          }
+        }
+      } else {
+        // Get all groups for course
+        final allGroups = await getGroupsByCourseAsync(assignment.courseId);
+        groups = allGroups.where((g) => g.studentIds.contains(studentId)).toList();
+      }
+
+      if (groups.isEmpty) return 'No Group';
+      return groups.map((g) => g.name).join(', ');
+    } catch (e) {
+      print('Get student group names error: $e');
+      return 'Unknown';
+    }
+  }
+    // ==================== FILE UPLOAD ====================
+
+  // Upload file to Firebase Storage
+  Future<String> uploadFile(File file, String path) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child(path);
+      final uploadTask = await ref.putFile(file);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Upload file error: $e');
+      rethrow;
+    }
+  }
+
+  // Upload file bytes (for web)
+  Future<String> uploadFileBytes(
+    Uint8List bytes,
+    String fileName,
+    String path,
+  ) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child(path);
+      final uploadTask = await ref.putData(
+        bytes,
+        SettableMetadata(contentType: _getContentType(fileName)),
+      );
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Upload file bytes error: $e');
+      rethrow;
+    }
+  }
+
+  String _getContentType(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+      case 'docx':
+        return 'application/msword';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'txt':
+        return 'text/plain';
+      case 'zip':
+        return 'application/zip';
+      default:
+        return 'application/octet-stream';
     }
   }
 }

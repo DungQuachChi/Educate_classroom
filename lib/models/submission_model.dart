@@ -4,12 +4,15 @@ class SubmissionModel {
   final String id;
   final String assignmentId;
   final String studentId;
-  final String? content; // Text submission
-  final List<String> attachmentUrls; // File submissions
+  final String? content;
+  final List<String> attachmentUrls;
   final DateTime submittedAt;
+  final int attemptNumber; 
+  final bool isLate; 
   final int? score;
   final String? feedback;
   final DateTime? gradedAt;
+  final String? gradedBy; 
 
   SubmissionModel({
     required this.id,
@@ -18,12 +21,14 @@ class SubmissionModel {
     this.content,
     this.attachmentUrls = const [],
     required this.submittedAt,
+    this.attemptNumber = 1,
+    this.isLate = false,
     this.score,
     this.feedback,
     this.gradedAt,
+    this.gradedBy,
   });
 
-  // Convert to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -32,13 +37,15 @@ class SubmissionModel {
       'content': content,
       'attachmentUrls': attachmentUrls,
       'submittedAt': Timestamp.fromDate(submittedAt),
+      'attemptNumber': attemptNumber,
+      'isLate': isLate,
       'score': score,
       'feedback': feedback,
       'gradedAt': gradedAt != null ? Timestamp.fromDate(gradedAt!) : null,
+      'gradedBy': gradedBy,
     };
   }
 
-  // Create from Firestore document
   factory SubmissionModel.fromMap(Map<String, dynamic> map, String documentId) {
     return SubmissionModel(
       id: documentId,
@@ -47,15 +54,17 @@ class SubmissionModel {
       content: map['content'],
       attachmentUrls: List<String>.from(map['attachmentUrls'] ?? []),
       submittedAt: (map['submittedAt'] as Timestamp).toDate(),
+      attemptNumber: map['attemptNumber'] ?? 1,
+      isLate: map['isLate'] ?? false,
       score: map['score'],
       feedback: map['feedback'],
       gradedAt: map['gradedAt'] != null 
           ? (map['gradedAt'] as Timestamp).toDate() 
           : null,
+      gradedBy: map['gradedBy'],
     );
   }
 
-  // Copy with method
   SubmissionModel copyWith({
     String? id,
     String? assignmentId,
@@ -63,9 +72,12 @@ class SubmissionModel {
     String? content,
     List<String>? attachmentUrls,
     DateTime? submittedAt,
+    int? attemptNumber,
+    bool? isLate,
     int? score,
     String? feedback,
     DateTime? gradedAt,
+    String? gradedBy,
   }) {
     return SubmissionModel(
       id: id ?? this.id,
@@ -74,12 +86,14 @@ class SubmissionModel {
       content: content ?? this.content,
       attachmentUrls: attachmentUrls ?? this.attachmentUrls,
       submittedAt: submittedAt ?? this.submittedAt,
+      attemptNumber: attemptNumber ?? this.attemptNumber,
+      isLate: isLate ?? this.isLate,
       score: score ?? this.score,
       feedback: feedback ?? this.feedback,
       gradedAt: gradedAt ?? this.gradedAt,
+      gradedBy: gradedBy ?? this.gradedBy,
     );
   }
-  bool get isGraded => score != null;
 
-  bool isLate(DateTime dueDate) => submittedAt.isAfter(dueDate);
+  bool get isGraded => score != null;
 }
