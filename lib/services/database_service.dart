@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:educate_classroom/models/assignment_model.dart';
+import 'package:educate_classroom/models/submission_model.dart';
 import '../models/semester_model.dart';
 import '../models/course_model.dart';
 import '../models/group_model.dart';
@@ -430,5 +432,169 @@ Stream<List<UserModel>> getStudents() {
       print('Delete student error: $e');
       rethrow;
     }
+  }  
+  // ==================== ASSIGNMENT OPERATIONS ====================
+
+  // Create assignment
+Future<String> createAssignment(AssignmentModel assignment) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .add(assignment.toMap());
+
+      return doc.id;
+    } catch (e) {
+      print('Create assignment error: $e');
+      rethrow;
+    }
+  }
+
+  // Get assignments by course
+  Stream<List<AssignmentModel>> getAssignmentsByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.assignmentsCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AssignmentModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get single assignment
+  Future<AssignmentModel?> getAssignment(String assignmentId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .doc(assignmentId)
+          .get();
+
+      if (doc.exists) {
+        return AssignmentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+      return null;
+    } catch (e) {
+      print('Get assignment error: $e');
+      return null;
+    }
+  }
+
+  // Update assignment
+  Future<void> updateAssignment(AssignmentModel assignment) async {
+    try {
+      await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .doc(assignment.id)
+          .update(assignment.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update assignment error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete assignment
+  Future<void> deleteAssignment(String assignmentId) async {
+    try {
+      // Delete all submissions for this assignment
+      QuerySnapshot submissions = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .get();
+
+      for (var submission in submissions.docs) {
+        await submission.reference.delete();
+      }
+
+      // Delete assignment
+      await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .doc(assignmentId)
+          .delete();
+    } catch (e) {
+      print('Delete assignment error: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== SUBMISSION OPERATIONS ====================
+
+  // Submit assignment
+  Future<String> createSubmission(SubmissionModel submission) async {
+    try {
+      // Check if student already submitted
+      QuerySnapshot existing = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .where('assignmentId', isEqualTo: submission.assignmentId)
+          .where('studentId', isEqualTo: submission.studentId)
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        // Update existing submission
+        await existing.docs.first.reference.update(submission.toMap());
+        return existing.docs.first.id;
+      } else {
+        // Create new submission
+        DocumentReference doc = await _firestore
+            .collection(AppConstants.submissionsCollection)
+            .add(submission.toMap());
+        return doc.id;
+      }
+    } catch (e) {
+      print('Create submission error: $e');
+      rethrow;
+    }
+  }
+
+  // Get submissions for an assignment
+Stream<List<SubmissionModel>> getSubmissionsByAssignment(String assignmentId) {
+    return _firestore
+        .collection(AppConstants.submissionsCollection)
+        .where('assignmentId', isEqualTo: assignmentId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => SubmissionModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get student's submission for an assignment
+  Future<SubmissionModel?> getStudentSubmission(String assignmentId, String studentId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .where('assignmentId', isEqualTo: assignmentId)
+          .where('studentId', isEqualTo: studentId)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return SubmissionModel.fromMap(
+          snapshot.docs.first.data() as Map<String, dynamic>,
+          snapshot.docs.first.id,
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Get student submission error: $e');
+      return null;
+    }
+  }
+
+  // Grade submission
+  Future<void> gradeSubmission(String submissionId, int score, String? feedback) async {
+    try {
+      await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .doc(submissionId)
+          .update({
+        'score': score,
+        'feedback': feedback,
+        'gradedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Grade submission error: $e');
+      rethrow;
+    }
   }
 }
+
