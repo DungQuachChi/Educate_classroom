@@ -1,3 +1,4 @@
+import 'package:educate_classroom/screens/instructor/assignment_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/group_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
 import 'package:flutter/material.dart';
@@ -142,6 +143,20 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const GroupManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          icon: Icons.assignment,
+                          title: 'Assignments',
+                          subtitle: 'Manage assignments',
+                          color: Colors.red,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AssignmentManagementScreen(),
                               ),
                             );
                           },
