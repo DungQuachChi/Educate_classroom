@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:html' as html;
 import '../../providers/auth_provider.dart';
 import '../../models/course_model.dart';
 import '../../models/assignment_model.dart';
 import '../../models/submission_model.dart';
+import '../../models/material_model.dart';
 import '../../services/database_service.dart';
 import 'student_assignment_screen.dart';
 
@@ -96,54 +98,84 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
                   ),
                 ),
 
-                // Assignments Section
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Assignments (${_assignments.length})',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-
+                // Tabs
                 Expanded(
-                  child: _assignments.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                  child: DefaultTabController(
+                    length: 2,
+                    child: Column(
+                      children: [
+                        const TabBar(
+                          tabs: [
+                            Tab(
+                              icon: Icon(Icons.assignment),
+                              text: 'Assignments',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.folder),
+                              text: 'Materials',
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                          child: TabBarView(
                             children: [
-                              Icon(Icons.assignment, size: 80, color: Colors.grey[400]),
-                              const SizedBox(height: 16),
-                              Text('No assignments yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                              // Assignments Tab
+                              _buildAssignmentsTab(),
+
+                              // Materials Tab
+                              _StudentMaterialsTab(course: widget.course),
                             ],
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _assignments.length,
-                          itemBuilder: (context, index) {
-                            final assignment = _assignments[index];
-                            final submissions = _submissionHistory[assignment.id] ?? [];
-                            final latestSubmission = submissions.isNotEmpty ? submissions.last : null;
-
-                            return _AssignmentCard(
-                              assignment: assignment,
-                              latestSubmission: latestSubmission,
-                              totalAttempts: submissions.length,
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => StudentAssignmentScreen(assignment: assignment),
-                                  ),
-                                );
-                                _loadAssignments();
-                              },
-                            );
-                          },
                         ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildAssignmentsTab() {
+    if (_assignments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('No assignments yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAssignments,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _assignments.length,
+        itemBuilder: (context, index) {
+          final assignment = _assignments[index];
+          final submissions = _submissionHistory[assignment.id] ?? [];
+          final latestSubmission = submissions.isNotEmpty ? submissions.last : null;
+
+          return _AssignmentCard(
+            assignment: assignment,
+            latestSubmission: latestSubmission,
+            totalAttempts: submissions.length,
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StudentAssignmentScreen(assignment: assignment),
+                ),
+              );
+              _loadAssignments();
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -275,6 +307,177 @@ class _AssignmentCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 12, color: color)),
       ],
+    );
+  }
+}
+
+// Student Materials Tab
+class _StudentMaterialsTab extends StatefulWidget {
+  final CourseModel course;
+
+  const _StudentMaterialsTab({required this.course});
+
+  @override
+  State<_StudentMaterialsTab> createState() => _StudentMaterialsTabState();
+}
+
+class _StudentMaterialsTabState extends State<_StudentMaterialsTab> {
+  final DatabaseService _databaseService = DatabaseService();
+  List<MaterialModel> _materials = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMaterials();
+  }
+
+  Future<void> _loadMaterials() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.user != null) {
+      try {
+        final materials = await _databaseService.getStudentMaterials(
+          authProvider.user!.uid,
+          widget.course.id,
+        );
+
+        setState(() {
+          _materials = materials;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_materials.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('No materials yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            const Text(
+              'Your instructor will upload course materials here',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadMaterials,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _materials.length,
+        itemBuilder: (context, index) {
+          final material = _materials[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    material.fileIcon,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+              ),
+              title: Text(
+                material.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    material.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.insert_drive_file, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          material.fileName,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.storage, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        material.fileSizeFormatted,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(material.createdAt),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.download, color: Colors.teal),
+                    onPressed: () {
+                      html.window.open(material.fileUrl, '_blank');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Opening ${material.fileName}'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    tooltip: 'Download',
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

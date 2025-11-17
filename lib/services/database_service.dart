@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:educate_classroom/models/assignment_model.dart';
+import 'package:educate_classroom/models/material_model.dart';
 import 'package:educate_classroom/models/submission_model.dart';
 import '../models/semester_model.dart';
 import '../models/course_model.dart';
@@ -925,6 +926,108 @@ Stream<List<UserModel>> getStudents() {
         return 'application/zip';
       default:
         return 'application/octet-stream';
+    }
+  }
+    // ==================== MATERIAL OPERATIONS ====================
+
+  // Create material
+  Future<String> createMaterial(MaterialModel material) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.materialsCollection)
+          .add(material.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Create material error: $e');
+      rethrow;
+    }
+  }
+
+  // Get materials by course
+  Stream<List<MaterialModel>> getMaterialsByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.materialsCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => MaterialModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get student materials (based on groups)
+  Future<List<MaterialModel>> getStudentMaterials(
+    String studentId,
+    String courseId,
+  ) async {
+    try {
+      // Get student's groups in course
+      QuerySnapshot groupSnapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .where('studentIds', arrayContains: studentId)
+          .get();
+
+      List<String> groupIds = groupSnapshot.docs.map((doc) => doc.id).toList();
+
+      // Get materials
+      QuerySnapshot materialSnapshot = await _firestore
+          .collection(AppConstants.materialsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      List<MaterialModel> materials = [];
+      for (var doc in materialSnapshot.docs) {
+        final material = MaterialModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+
+        // Include if no groups specified or student is in one of the groups
+        if (material.groupIds.isEmpty || 
+            material.groupIds.any((gid) => groupIds.contains(gid))) {
+          materials.add(material);
+        }
+      }
+
+      return materials;
+    } catch (e) {
+      print('Get student materials error: $e');
+      return [];
+    }
+  }
+
+  // Update material
+  Future<void> updateMaterial(MaterialModel material) async {
+    try {
+      await _firestore
+          .collection(AppConstants.materialsCollection)
+          .doc(material.id)
+          .update(material.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update material error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete material
+  Future<void> deleteMaterial(String materialId, String fileUrl) async {
+    try {
+      // Delete file from storage
+      try {
+        final ref = FirebaseStorage.instance.refFromURL(fileUrl);
+        await ref.delete();
+      } catch (e) {
+        print('Delete file from storage error: $e');
+        // Continue even if file deletion fails
+      }
+
+      // Delete document
+      await _firestore
+          .collection(AppConstants.materialsCollection)
+          .doc(materialId)
+          .delete();
+    } catch (e) {
+      print('Delete material error: $e');
+      rethrow;
     }
   }
 }
