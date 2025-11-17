@@ -1,4 +1,5 @@
 import 'package:educate_classroom/providers/assignment_provider.dart';
+import 'package:educate_classroom/providers/material_provider.dart';
 import 'package:educate_classroom/providers/student_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GroupProvider()),
         ChangeNotifierProvider(create: (_) => StudentProvider()), 
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
+        ChangeNotifierProvider(create: (_) => MaterialProvider()),
       ],
       child: MaterialApp(
         title: 'Educate Classroom',

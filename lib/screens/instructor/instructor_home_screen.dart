@@ -1,5 +1,6 @@
 import 'package:educate_classroom/screens/instructor/assignment_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/group_management_screen.dart';
+import 'package:educate_classroom/screens/instructor/material_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -157,6 +158,20 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const AssignmentManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          icon: Icons.folder,
+                          title: 'Materials',
+                          subtitle: 'Upload materials',
+                          color: Colors.teal,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MaterialManagementScreen(),
                               ),
                             );
                           },
