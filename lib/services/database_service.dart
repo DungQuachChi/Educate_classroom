@@ -7,6 +7,10 @@ import '../models/course_model.dart';
 import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
+import '../models/question_model.dart';
+import '../models/quiz_model.dart';
+import '../models/quiz_attempt_model.dart';
+import 'package:intl/intl.dart'; 
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -1028,6 +1032,474 @@ Stream<List<UserModel>> getStudents() {
     } catch (e) {
       print('Delete material error: $e');
       rethrow;
+    }
+  }
+    // ==================== QUESTION BANK OPERATIONS ====================
+
+  // Create question
+  Future<String> createQuestion(QuestionModel question) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.questionsCollection)
+          .add(question.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Create question error: $e');
+      rethrow;
+    }
+  }
+
+  // Get questions by course
+  Stream<List<QuestionModel>> getQuestionsByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.questionsCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => QuestionModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get questions by difficulty
+  Future<List<QuestionModel>> getQuestionsByDifficulty(
+    String courseId,
+    QuestionDifficulty difficulty,
+  ) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.questionsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .where('difficulty', isEqualTo: difficulty.toString().split('.').last)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => QuestionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Get questions by difficulty error: $e');
+      return [];
+    }
+  }
+
+  // Update question
+  Future<void> updateQuestion(QuestionModel question) async {
+    try {
+      await _firestore
+          .collection(AppConstants.questionsCollection)
+          .doc(question.id)
+          .update(question.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update question error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete question
+  Future<void> deleteQuestion(String questionId) async {
+    try {
+      await _firestore
+          .collection(AppConstants.questionsCollection)
+          .doc(questionId)
+          .delete();
+    } catch (e) {
+      print('Delete question error: $e');
+      rethrow;
+    }
+  }
+
+  // Get question by ID
+  Future<QuestionModel?> getQuestionById(String questionId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(AppConstants.questionsCollection)
+          .doc(questionId)
+          .get();
+
+      if (doc.exists) {
+        return QuestionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+      return null;
+    } catch (e) {
+      print('Get question by ID error: $e');
+      return null;
+    }
+  }
+
+  // ==================== QUIZ OPERATIONS ====================
+
+  // Create quiz
+  Future<String> createQuiz(QuizModel quiz) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.quizzesCollection)
+          .add(quiz.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Create quiz error: $e');
+      rethrow;
+    }
+  }
+
+  // Get quizzes by course
+  Stream<List<QuizModel>> getQuizzesByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.quizzesCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('openTime', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => QuizModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get student quizzes (based on groups)
+  Future<List<QuizModel>> getStudentQuizzes(
+    String studentId,
+    String courseId,
+  ) async {
+    try {
+      // Get student's groups
+      QuerySnapshot groupSnapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .where('studentIds', arrayContains: studentId)
+          .get();
+
+      List<String> groupIds = groupSnapshot.docs.map((doc) => doc.id).toList();
+
+      // Get quizzes
+      QuerySnapshot quizSnapshot = await _firestore
+          .collection(AppConstants.quizzesCollection)
+          .where('courseId', isEqualTo: courseId)
+          .orderBy('openTime', descending: true)
+          .get();
+
+      List<QuizModel> quizzes = [];
+      for (var doc in quizSnapshot.docs) {
+        final quiz = QuizModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+
+        // Include if no groups or student is in group
+        if (quiz.groupIds.isEmpty || 
+            quiz.groupIds.any((gid) => groupIds.contains(gid))) {
+          quizzes.add(quiz);
+        }
+      }
+
+      return quizzes;
+    } catch (e) {
+      print('Get student quizzes error: $e');
+      return [];
+    }
+  }
+
+  // Update quiz
+  Future<void> updateQuiz(QuizModel quiz) async {
+    try {
+      await _firestore
+          .collection(AppConstants.quizzesCollection)
+          .doc(quiz.id)
+          .update(quiz.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update quiz error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete quiz
+  Future<void> deleteQuiz(String quizId) async {
+    try {
+      // Delete all attempts
+      QuerySnapshot attempts = await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .where('quizId', isEqualTo: quizId)
+          .get();
+
+      for (var doc in attempts.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete quiz
+      await _firestore
+          .collection(AppConstants.quizzesCollection)
+          .doc(quizId)
+          .delete();
+    } catch (e) {
+      print('Delete quiz error: $e');
+      rethrow;
+    }
+  }
+
+  // Randomly select questions based on quiz structure
+  Future<List<String>> selectRandomQuestions(
+    String courseId,
+    QuizStructure structure,
+  ) async {
+    try {
+      List<String> selectedIds = [];
+
+      // Get easy questions
+      if (structure.easyCount > 0) {
+        final easyQuestions = await getQuestionsByDifficulty(
+          courseId,
+          QuestionDifficulty.easy,
+        );
+        easyQuestions.shuffle();
+        selectedIds.addAll(
+          easyQuestions.take(structure.easyCount).map((q) => q.id),
+        );
+      }
+
+      // Get medium questions
+      if (structure.mediumCount > 0) {
+        final mediumQuestions = await getQuestionsByDifficulty(
+          courseId,
+          QuestionDifficulty.medium,
+        );
+        mediumQuestions.shuffle();
+        selectedIds.addAll(
+          mediumQuestions.take(structure.mediumCount).map((q) => q.id),
+        );
+      }
+
+      // Get hard questions
+      if (structure.hardCount > 0) {
+        final hardQuestions = await getQuestionsByDifficulty(
+          courseId,
+          QuestionDifficulty.hard,
+        );
+        hardQuestions.shuffle();
+        selectedIds.addAll(
+          hardQuestions.take(structure.hardCount).map((q) => q.id),
+        );
+      }
+
+      return selectedIds;
+    } catch (e) {
+      print('Select random questions error: $e');
+      return [];
+    }
+  }
+
+  // ==================== QUIZ ATTEMPT OPERATIONS ====================
+
+  // Start quiz attempt
+  Future<String> startQuizAttempt(QuizAttemptModel attempt) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .add(attempt.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Start quiz attempt error: $e');
+      rethrow;
+    }
+  }
+
+  // Get student's attempts for a quiz
+  Future<List<QuizAttemptModel>> getStudentQuizAttempts(
+    String quizId,
+    String studentId,
+  ) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .where('quizId', isEqualTo: quizId)
+          .where('studentId', isEqualTo: studentId)
+          .orderBy('attemptNumber')
+          .get();
+
+      return snapshot.docs
+          .map((doc) => QuizAttemptModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Get student quiz attempts error: $e');
+      return [];
+    }
+  }
+
+  // Submit quiz attempt
+  Future<void> submitQuizAttempt({
+    required String attemptId,
+    required List<QuizAnswer> answers,
+    required int score,
+    required int totalQuestions,
+  }) async {
+    try {
+      await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .doc(attemptId)
+          .update({
+        'answers': answers.map((a) => a.toMap()).toList(),
+        'score': score,
+        'totalQuestions': totalQuestions,
+        'submittedAt': FieldValue.serverTimestamp(),
+        'isCompleted': true,
+      });
+    } catch (e) {
+      print('Submit quiz attempt error: $e');
+      rethrow;
+    }
+  }
+
+  // Get all attempts for a quiz
+  Future<List<QuizAttemptModel>> getAllQuizAttempts(String quizId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .where('quizId', isEqualTo: quizId)
+          .orderBy('submittedAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => QuizAttemptModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+    } catch (e) {
+      print('Get all quiz attempts error: $e');
+      return [];
+    }
+  }
+
+  // Export quiz results to CSV
+  Future<String> exportQuizResultsToCSV(
+    String quizId,
+    QuizModel quiz,
+  ) async {
+    try {
+      final attempts = await getAllQuizAttempts(quizId);
+      final students = await getStudentsForQuiz(quiz);
+
+      // Group by student
+      Map<String, List<QuizAttemptModel>> attemptsByStudent = {};
+      for (var attempt in attempts) {
+        if (!attemptsByStudent.containsKey(attempt.studentId)) {
+          attemptsByStudent[attempt.studentId] = [];
+        }
+        attemptsByStudent[attempt.studentId]!.add(attempt);
+      }
+
+      // Build CSV with proper escaping
+      StringBuffer csv = StringBuffer();
+      
+      // Header
+      csv.writeln('Student ID,Name,Email,Status,Total Attempts,Best Score,Latest Score,Percentage,Time Taken,Submitted At');
+
+      // Data rows
+      for (var student in students) {
+        final studentAttempts = attemptsByStudent[student.uid] ?? [];
+        final completed = studentAttempts.where((a) => a.isCompleted).toList();
+        
+        String studentId = student.studentId ?? '';
+        String name = student.displayName;
+        String email = student.email;
+        String status = completed.isEmpty ? 'Not Completed' : 'Completed';
+        int totalAttempts = studentAttempts.length;
+        String bestScore = '';
+        String latestScore = '';
+        String percentage = '';
+        String timeTaken = '';
+        String submittedAt = '';
+
+        if (completed.isNotEmpty) {
+          int best = completed.map((a) => a.score ?? 0).reduce((a, b) => a > b ? a : b);
+          int latest = completed.last.score ?? 0;
+          
+          bestScore = '$best/${quiz.totalQuestions}';
+          latestScore = '$latest/${quiz.totalQuestions}';
+          
+          if (quiz.totalQuestions > 0) {
+            double pct = (latest / quiz.totalQuestions) * 100;
+            percentage = '${pct.toStringAsFixed(1)}%';
+          }
+          
+          Duration? duration = completed.last.timeTaken;
+          if (duration != null) {
+            int minutes = duration.inMinutes;
+            int seconds = duration.inSeconds % 60;
+            timeTaken = '${minutes}m ${seconds}s';
+          }
+          
+          if (completed.last.submittedAt != null) {
+            submittedAt = DateFormat('yyyy-MM-dd HH:mm:ss').format(completed.last.submittedAt!);
+          }
+        }
+
+        // Build row with proper CSV escaping
+        csv.write(_escapeCsvField(studentId));
+        csv.write(',');
+        csv.write(_escapeCsvField(name));
+        csv.write(',');
+        csv.write(_escapeCsvField(email));
+        csv.write(',');
+        csv.write(_escapeCsvField(status));
+        csv.write(',');
+        csv.write(totalAttempts.toString());
+        csv.write(',');
+        csv.write(_escapeCsvField(bestScore));
+        csv.write(',');
+        csv.write(_escapeCsvField(latestScore));
+        csv.write(',');
+        csv.write(_escapeCsvField(percentage));
+        csv.write(',');
+        csv.write(_escapeCsvField(timeTaken));
+        csv.write(',');
+        csv.writeln(_escapeCsvField(submittedAt));
+      }
+
+      return csv.toString();
+    } catch (e) {
+      print('Export quiz CSV error: $e');
+      rethrow;
+    }
+  }
+
+  // Helper method to properly escape CSV fields
+  String _escapeCsvField(String field) {
+    if (field.isEmpty) return '""';
+    
+    // If field contains comma, quote, or newline, wrap in quotes and escape existing quotes
+    if (field.contains(',') || field.contains('"') || field.contains('\n')) {
+      return '"${field.replaceAll('"', '""')}"';
+    }
+    
+    return field;
+  }
+
+  // Get students for quiz (based on groups) - helper method
+  Future<List<UserModel>> getStudentsForQuiz(QuizModel quiz) async {
+    try {
+      if (quiz.groupIds.isEmpty) {
+        // All students in course
+        QuerySnapshot groupSnapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where('courseId', isEqualTo: quiz.courseId)
+            .get();
+
+        Set<String> studentIds = {};
+        for (var doc in groupSnapshot.docs) {
+          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          studentIds.addAll(group.studentIds);
+        }
+
+        return await getStudentsByIds(studentIds.toList());
+      } else {
+        // Specific groups
+        QuerySnapshot groupSnapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where(FieldPath.documentId, whereIn: quiz.groupIds)
+            .get();
+
+        Set<String> studentIds = {};
+        for (var doc in groupSnapshot.docs) {
+          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          studentIds.addAll(group.studentIds);
+        }
+
+        return await getStudentsByIds(studentIds.toList());
+      }
+    } catch (e) {
+      print('Get students for quiz error: $e');
+      return [];
     }
   }
 }

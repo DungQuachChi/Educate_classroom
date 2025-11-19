@@ -1,6 +1,8 @@
 import 'package:educate_classroom/screens/instructor/assignment_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/group_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/material_management_screen.dart';
+import 'package:educate_classroom/screens/instructor/question_bank_screen.dart';
+import 'package:educate_classroom/screens/instructor/quiz_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -172,6 +174,34 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const MaterialManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          icon: Icons.quiz,
+                          title: 'Question Bank',
+                          subtitle: 'Manage questions',
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const QuestionBankScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          icon: Icons.assignment_turned_in,
+                          title: 'Quizzes',
+                          subtitle: 'Create & track',
+                          color: Colors.indigo,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const QuizManagementScreen(),
                               ),
                             );
                           },
