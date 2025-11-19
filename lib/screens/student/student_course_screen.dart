@@ -9,6 +9,8 @@ import '../../models/submission_model.dart';
 import '../../models/material_model.dart';
 import '../../services/database_service.dart';
 import 'student_assignment_screen.dart';
+import '../../models/quiz_model.dart';
+import 'student_quiz_screen.dart';
 
 class StudentCourseScreen extends StatefulWidget {
   final CourseModel course;
@@ -101,7 +103,7 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
                 // Tabs
                 Expanded(
                   child: DefaultTabController(
-                    length: 2,
+                    length: 3,
                     child: Column(
                       children: [
                         const TabBar(
@@ -114,6 +116,10 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
                               icon: Icon(Icons.folder),
                               text: 'Materials',
                             ),
+                            Tab(
+                              icon: Icon(Icons.quiz), 
+                              text: 'Quizzes',
+                              ),
                           ],
                         ),
                         Expanded(
@@ -124,6 +130,9 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
 
                               // Materials Tab
                               _StudentMaterialsTab(course: widget.course),
+
+                              // Quizzes Tab
+                              _StudentQuizzesTab(course: widget.course),
                             ],
                           ),
                         ),
@@ -478,6 +487,190 @@ class _StudentMaterialsTabState extends State<_StudentMaterialsTab> {
           );
         },
       ),
+    );
+  }
+}
+// Student Quizzes Tab
+class _StudentQuizzesTab extends StatefulWidget {
+  final CourseModel course;
+
+  const _StudentQuizzesTab({required this.course});
+
+  @override
+  State<_StudentQuizzesTab> createState() => _StudentQuizzesTabState();
+}
+
+class _StudentQuizzesTabState extends State<_StudentQuizzesTab> {
+  final DatabaseService _databaseService = DatabaseService();
+  List<QuizModel> _quizzes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuizzes();
+  }
+
+  Future<void> _loadQuizzes() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.user != null) {
+      try {
+        final quizzes = await _databaseService.getStudentQuizzes(
+          authProvider.user!.uid,
+          widget.course.id,
+        );
+
+        setState(() {
+          _quizzes = quizzes;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_quizzes.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.quiz, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('No quizzes yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadQuizzes,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _quizzes.length,
+        itemBuilder: (context, index) {
+          final quiz = _quizzes[index];
+          return _StudentQuizCard(quiz: quiz, onTap: _loadQuizzes);
+        },
+      ),
+    );
+  }
+}
+
+class _StudentQuizCard extends StatelessWidget {
+  final QuizModel quiz;
+  final VoidCallback onTap;
+
+  const _StudentQuizCard({required this.quiz, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    Color statusColor = Colors.grey;
+    IconData statusIcon = Icons.pending;
+    String statusText = 'Upcoming';
+
+    if (quiz.isOpen) {
+      statusColor = Colors.green;
+      statusIcon = Icons.play_circle;
+      statusText = 'Open';
+    } else if (quiz.isClosed) {
+      statusColor = Colors.red;
+      statusIcon = Icons.lock;
+      statusText = 'Closed';
+    }
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentQuizScreen(quiz: quiz),
+            ),
+          );
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      quiz.title,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Icon(statusIcon, color: statusColor, size: 24),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                quiz.description,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _buildInfoChip(Icons.event, 'Open: ${DateFormat('MMM dd, HH:mm').format(quiz.openTime)}'),
+                  _buildInfoChip(Icons.event_busy, 'Close: ${DateFormat('MMM dd, HH:mm').format(quiz.closeTime)}'),
+                  _buildInfoChip(Icons.timer, '${quiz.durationMinutes} min'),
+                  _buildInfoChip(Icons.quiz, '${quiz.totalQuestions} questions'),
+                  _buildInfoChip(Icons.repeat, 'Max ${quiz.maxAttempts == 0 ? '∞' : quiz.maxAttempts} attempts'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, size: 16, color: statusColor),
+                    const SizedBox(width: 8),
+                    Text(statusText, style: TextStyle(fontSize: 14, color: statusColor, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.grey[600]),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ],
     );
   }
 }
