@@ -1,3 +1,4 @@
+import 'package:educate_classroom/providers/announcement_provider.dart';
 import 'package:educate_classroom/providers/assignment_provider.dart';
 import 'package:educate_classroom/providers/material_provider.dart';
 import 'package:educate_classroom/providers/quiz_provider.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AssignmentProvider()),
         ChangeNotifierProvider(create: (_) => MaterialProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()), 
+        ChangeNotifierProvider(create: (_) => AnnouncementProvider()), 
       ],
       child: MaterialApp(
         title: 'Educate Classroom',
