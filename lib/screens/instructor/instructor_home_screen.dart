@@ -1,3 +1,4 @@
+import 'package:educate_classroom/screens/instructor/announcement_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/assignment_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/group_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/material_management_screen.dart';
@@ -202,6 +203,20 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const QuizManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DashboardCard(
+                          icon: Icons.campaign,
+                          title: 'Announcements',
+                          subtitle: 'Post updates',
+                          color: Colors.deepPurple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AnnouncementManagementScreen(),
                               ),
                             );
                           },

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:educate_classroom/models/announcement_comment_model.dart';
+import 'package:educate_classroom/models/announcement_model.dart';
 import 'package:educate_classroom/models/assignment_model.dart';
 import 'package:educate_classroom/models/material_model.dart';
 import 'package:educate_classroom/models/submission_model.dart';
@@ -1500,6 +1502,203 @@ Stream<List<UserModel>> getStudents() {
     } catch (e) {
       print('Get students for quiz error: $e');
       return [];
+    }
+  }
+    // ==================== ANNOUNCEMENT OPERATIONS ====================
+
+  // Create announcement
+  Future<String> createAnnouncement(AnnouncementModel announcement) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .add(announcement.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Create announcement error: $e');
+      rethrow;
+    }
+  }
+
+  // Get announcements by course
+  Stream<List<AnnouncementModel>> getAnnouncementsByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.announcementsCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AnnouncementModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get student announcements (based on groups)
+  Future<List<AnnouncementModel>> getStudentAnnouncements(
+    String studentId,
+    String courseId,
+  ) async {
+    try {
+      // Get student's groups
+      QuerySnapshot groupSnapshot = await _firestore
+          .collection(AppConstants.groupsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .where('studentIds', arrayContains: studentId)
+          .get();
+
+      List<String> groupIds = groupSnapshot.docs.map((doc) => doc.id).toList();
+
+      // Get announcements
+      QuerySnapshot announcementSnapshot = await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      List<AnnouncementModel> announcements = [];
+      for (var doc in announcementSnapshot.docs) {
+        final announcement = AnnouncementModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+
+        // Include if no groups or student is in group
+        if (announcement.groupIds.isEmpty || 
+            announcement.groupIds.any((gid) => groupIds.contains(gid))) {
+          announcements.add(announcement);
+        }
+      }
+
+      return announcements;
+    } catch (e) {
+      print('Get student announcements error: $e');
+      return [];
+    }
+  }
+
+  // Update announcement
+  Future<void> updateAnnouncement(AnnouncementModel announcement) async {
+    try {
+      await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .doc(announcement.id)
+          .update(announcement.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update announcement error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete announcement
+  Future<void> deleteAnnouncement(String announcementId) async {
+    try {
+      // Delete all comments
+      QuerySnapshot comments = await _firestore
+          .collection(AppConstants.announcementCommentsCollection)
+          .where('announcementId', isEqualTo: announcementId)
+          .get();
+
+      for (var doc in comments.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete announcement
+      await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .doc(announcementId)
+          .delete();
+    } catch (e) {
+      print('Delete announcement error: $e');
+      rethrow;
+    }
+  }
+
+  // Mark announcement as viewed
+  Future<void> markAnnouncementAsViewed(String announcementId, String userId) async {
+    try {
+      await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .doc(announcementId)
+          .update({
+        'viewedBy': FieldValue.arrayUnion([userId]),
+      });
+    } catch (e) {
+      print('Mark announcement as viewed error: $e');
+      rethrow;
+    }
+  }
+
+  // Track attachment download (use index instead of URL)
+  Future<void> trackAttachmentDownload(
+    String announcementId,
+    int attachmentIndex,
+    String userId,
+  ) async {
+    try {
+      // Ensure key has no spaces
+      final key = attachmentIndex.toString(). trim();
+      
+      print('🔽 Tracking download: announcement=$announcementId, index=$attachmentIndex, key="$key", user=$userId');
+      
+      await _firestore
+          .collection(AppConstants.announcementsCollection)
+          .doc(announcementId)
+          .update({
+        'downloadedBy.$key': FieldValue.arrayUnion([userId]),
+      });
+      
+      print('Download tracked successfully with key: "$key"');
+    } catch (e) {
+      print('Track attachment download error: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== ANNOUNCEMENT COMMENT OPERATIONS ====================
+
+  // Add comment
+  Future<String> addAnnouncementComment(AnnouncementCommentModel comment) async {
+    try {
+      DocumentReference doc = await _firestore
+          .collection(AppConstants.announcementCommentsCollection)
+          .add(comment.toMap());
+      return doc.id;
+    } catch (e) {
+      print('Add comment error: $e');
+      rethrow;
+    }
+  }
+
+  // Get comments for announcement
+  Stream<List<AnnouncementCommentModel>> getAnnouncementComments(String announcementId) {
+    return _firestore
+        .collection(AppConstants.announcementCommentsCollection)
+        .where('announcementId', isEqualTo: announcementId)
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AnnouncementCommentModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Update comment
+  Future<void> updateAnnouncementComment(AnnouncementCommentModel comment) async {
+    try {
+      await _firestore
+          .collection(AppConstants.announcementCommentsCollection)
+          .doc(comment.id)
+          .update(comment.copyWith(updatedAt: DateTime.now()).toMap());
+    } catch (e) {
+      print('Update comment error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete comment
+  Future<void> deleteAnnouncementComment(String commentId) async {
+    try {
+      await _firestore
+          .collection(AppConstants.announcementCommentsCollection)
+          .doc(commentId)
+          .delete();
+    } catch (e) {
+      print('Delete comment error: $e');
+      rethrow;
     }
   }
 }

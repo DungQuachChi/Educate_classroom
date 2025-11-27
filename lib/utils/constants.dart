@@ -26,4 +26,5 @@ class AppConstants {
   static const String notificationsCollection = 'notifications';
   static const String questionsCollection = 'questions'; 
   static const String quizAttemptsCollection = 'quiz_attempts'; 
+  static const String announcementCommentsCollection = 'announcement_comments';
 }
