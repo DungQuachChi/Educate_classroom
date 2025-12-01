@@ -1,5 +1,6 @@
 import 'package:educate_classroom/providers/announcement_provider.dart';
 import 'package:educate_classroom/providers/assignment_provider.dart';
+import 'package:educate_classroom/providers/forum_provider.dart';
 import 'package:educate_classroom/providers/material_provider.dart';
 import 'package:educate_classroom/providers/quiz_provider.dart';
 import 'package:educate_classroom/providers/student_provider.dart';
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MaterialProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()), 
         ChangeNotifierProvider(create: (_) => AnnouncementProvider()), 
+        ChangeNotifierProvider(create: (_) => ForumProvider()),
       ],
       child: MaterialApp(
         title: 'Educate Classroom',

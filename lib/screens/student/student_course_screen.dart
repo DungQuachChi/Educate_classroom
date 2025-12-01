@@ -1,3 +1,4 @@
+import 'package:educate_classroom/screens/student/student_forum_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -139,6 +140,19 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
                       ],
                     ),
                   ),
+                ),
+                // In the AppBar actions:
+                IconButton(
+                  icon: const Icon(Icons.forum),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StudentForumListScreen(course: widget.course),
+                      ),
+                    );
+                  },
+                  tooltip: 'Forums',
                 ),
               ],
             ),
