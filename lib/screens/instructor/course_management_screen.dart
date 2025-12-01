@@ -1,3 +1,4 @@
+import 'package:educate_classroom/screens/instructor/instructor_course_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import '../../providers/semester_provider.dart';
 import '../../models/course_model.dart';
 import 'course_form_screen.dart';
 
+// ==================== MAIN SCREEN CLASS ====================
 class CourseManagementScreen extends StatefulWidget {
   const CourseManagementScreen({super.key});
 
@@ -16,13 +18,13 @@ class CourseManagementScreen extends StatefulWidget {
 class _CourseManagementScreenState extends State<CourseManagementScreen> {
   @override
   void initState() {
-    super.initState();
+    super. initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
       
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
+        courseProvider.loadCoursesBySemester(semesterProvider. currentSemester!. id);
       }
     });
   }
@@ -65,7 +67,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       ),
                     ),
                     Text(
-                      semesterProvider.currentSemester!.name,
+                      semesterProvider. currentSemester!.name,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -85,14 +87,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                             Icon(
                               Icons.book,
                               size: 80,
-                              color: Colors.grey[400],
+                              color: Colors. grey[400],
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No courses yet',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.grey[600],
+                                color: Colors. grey[600],
                               ),
                             ),
                           ],
@@ -110,14 +112,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton. extended(
         onPressed: () {
           final currentSemester = Provider.of<SemesterProvider>(context, listen: false).currentSemester;
           if (currentSemester != null) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => CourseFormScreen(semesterId: currentSemester.id),
+                builder: (_) => CourseFormScreen(semesterId: currentSemester. id),
               ),
             );
           }
@@ -129,6 +131,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   }
 }
 
+// ==================== COURSE CARD CLASS ====================
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
 
@@ -143,11 +146,18 @@ class _CourseCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to course details
+          // Navigate to course details
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => InstructorCourseScreen(course: course),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Cover Image (if exists)
             if (course.coverImage != null)
@@ -156,7 +166,7 @@ class _CourseCard extends StatelessWidget {
                 child: Image.network(
                   course.coverImage!,
                   height: 150,
-                  width: double.infinity,
+                  width: double. infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 150,
@@ -172,7 +182,7 @@ class _CourseCard extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       Colors.blue.shade400,
-                      Colors.blue.shade600,
+                      Colors.blue. shade600,
                     ],
                   ),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -187,12 +197,14 @@ class _CourseCard extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               course.code,
@@ -247,7 +259,7 @@ class _CourseCard extends StatelessWidget {
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(Icons.delete, size: 20, color: Colors.red),
+                                Icon(Icons. delete, size: 20, color: Colors.red),
                                 SizedBox(width: 8),
                                 Text('Delete', style: TextStyle(color: Colors.red)),
                               ],
@@ -288,7 +300,7 @@ class _CourseCard extends StatelessWidget {
                         'Created ${DateFormat('MMM dd, yyyy').format(course.createdAt)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: Colors. grey[600],
                         ),
                       ),
                     ],
@@ -319,7 +331,7 @@ class _CourseCard extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               try {
                 await provider.deleteCourse(course.id);
                 if (context.mounted) {
@@ -331,7 +343,7 @@ class _CourseCard extends StatelessWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger. of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error: $e'),
                       backgroundColor: Colors.red,
