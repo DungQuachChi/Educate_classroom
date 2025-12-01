@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:educate_classroom/models/announcement_comment_model.dart';
 import 'package:educate_classroom/models/announcement_model.dart';
 import 'package:educate_classroom/models/assignment_model.dart';
+import 'package:educate_classroom/models/forum_model.dart';
+import 'package:educate_classroom/models/forum_reply_model.dart';
 import 'package:educate_classroom/models/material_model.dart';
 import 'package:educate_classroom/models/submission_model.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/semester_model.dart';
 import '../models/course_model.dart';
 import '../models/group_model.dart';
@@ -19,7 +22,27 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance; 
 
+  // Get user by ID
+  Future<UserModel?> getUserById(String userId) async {
+    try {
+      final doc = await _firestore
+          . collection(AppConstants.usersCollection)
+          .doc(userId)
+          .get();
+      
+      if (! doc.exists) {
+        print('User not found: $userId');
+        return null;
+      }
+      
+      return UserModel.fromMap(doc. data()!);
+    } catch (e) {
+      print('Get user by ID error: $e');
+      return null;
+    }
+  }
   // ==================== SEMESTER OPERATIONS ====================
 
   // Create semester
@@ -1701,5 +1724,249 @@ Stream<List<UserModel>> getStudents() {
       rethrow;
     }
   }
+  // ==================== FORUM METHODS ====================
+
+  // Create forum topic
+  Future<String> createForum(ForumModel forum) async {
+    try {
+      final docRef = await _firestore
+          .collection(AppConstants.forumsCollection)
+          .add(forum.toMap());
+      return docRef.id;
+    } catch (e) {
+      print('Create forum error: $e');
+      rethrow;
+    }
+  }
+
+  // Get forums by course (Stream)
+  Stream<List<ForumModel>> getForumsByCourse(String courseId) {
+    return _firestore
+        .collection(AppConstants.forumsCollection)
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('isPinned', descending: true)
+        .orderBy('lastActivityAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot. docs
+            .map((doc) => ForumModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Get single forum
+  Future<ForumModel? > getForum(String forumId) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
+          .get();
+      
+      if (! doc.exists) return null;
+      return ForumModel.fromMap(doc.data()!, doc.id);
+    } catch (e) {
+      print('Get forum error: $e');
+      return null;
+    }
+  }
+
+  // Update forum
+  Future<void> updateForum(String forumId, Map<String, dynamic> updates) async {
+    try {
+      await _firestore
+          .collection(AppConstants. forumsCollection)
+          . doc(forumId)
+          .update(updates);
+    } catch (e) {
+      print('Update forum error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete forum
+  Future<void> deleteForum(String forumId) async {
+    try {
+      // Delete all replies first
+      final replies = await _firestore
+          . collection(AppConstants.forumRepliesCollection)
+          .where('forumId', isEqualTo: forumId)
+          .get();
+      
+      for (var doc in replies.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete forum
+      await _firestore
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
+          .delete();
+    } catch (e) {
+      print('Delete forum error: $e');
+      rethrow;
+    }
+  }
+
+  // Toggle pin forum
+  Future<void> togglePinForum(String forumId, bool isPinned) async {
+    try {
+      await _firestore
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
+          .update({'isPinned': isPinned});
+    } catch (e) {
+      print('Toggle pin forum error: $e');
+      rethrow;
+    }
+  }
+
+  // Toggle lock forum
+  Future<void> toggleLockForum(String forumId, bool isLocked) async {
+    try {
+      await _firestore
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
+          .update({'isLocked': isLocked});
+    } catch (e) {
+      print('Toggle lock forum error: $e');
+      rethrow;
+    }
+  }
+
+  // Search forums
+  Future<List<ForumModel>> searchForums(String courseId, String query) async {
+    try {
+      final snapshot = await _firestore
+          .collection(AppConstants.forumsCollection)
+          .where('courseId', isEqualTo: courseId)
+          .get();
+      
+      final allForums = snapshot.docs
+          .map((doc) => ForumModel.fromMap(doc.data(), doc.id))
+          .toList();
+      
+      // Filter by search query (case-insensitive)
+      final searchLower = query.toLowerCase();
+      return allForums.where((forum) {
+        return forum.title.toLowerCase().contains(searchLower) ||
+               forum.description.toLowerCase().contains(searchLower) ||
+               forum.tags.any((tag) => tag. toLowerCase().contains(searchLower));
+      }).toList();
+    } catch (e) {
+      print('Search forums error: $e');
+      return [];
+    }
+  }
+
+  // ==================== FORUM REPLY METHODS ====================
+  // Create forum reply
+  Future<String> createForumReply(ForumReplyModel reply) async {
+    try {
+      final docRef = await _firestore
+          .collection(AppConstants.forumRepliesCollection)
+          .add(reply.toMap());
+      
+      // Update forum reply count and last activity
+      final forumRef = _firestore
+          .collection(AppConstants.forumsCollection)
+          . doc(reply.forumId);
+      
+      await _firestore. runTransaction((transaction) async {
+        final forumDoc = await transaction.get(forumRef);
+        
+        if (! forumDoc.exists) {
+          throw 'Forum not found';
+        }
+        
+        final currentReplyCount = forumDoc. data()?['replyCount'] ?? 0;
+        
+        transaction.update(forumRef, {
+          'replyCount': currentReplyCount + 1,
+          'lastActivityAt': Timestamp.fromDate(reply.createdAt),
+          'lastActivityBy': reply.createdBy,
+        });
+      });
+      
+      return docRef.id;
+    } catch (e) {
+      print('Create forum reply error: $e');
+      rethrow;
+    }
+  }
+
+  // Get forum replies (Stream)
+  Stream<List<ForumReplyModel>> getForumReplies(String forumId) {
+    return _firestore
+        .collection(AppConstants.forumRepliesCollection)
+        .where('forumId', isEqualTo: forumId)
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ForumReplyModel. fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  // Update forum reply
+  Future<void> updateForumReply(String replyId, Map<String, dynamic> updates) async {
+    try {
+      await _firestore
+          .collection(AppConstants.forumRepliesCollection)
+          .doc(replyId)
+          .update(updates);
+    } catch (e) {
+      print('Update forum reply error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete forum reply
+  Future<void> deleteForumReply(String replyId, String forumId) async {
+    try {
+      // Delete the reply
+      await _firestore
+          .collection(AppConstants.forumRepliesCollection)
+          .doc(replyId)
+          .delete();
+      
+      // Decrement forum reply count
+      await _firestore
+          .collection(AppConstants. forumsCollection)
+          . doc(forumId)
+          .update({
+        'replyCount': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      print('Delete forum reply error: $e');
+      rethrow;
+    }
+  }
+
+  // Upload forum attachment
+  Future<String> uploadForumAttachment(String forumId, PlatformFile file) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      final ref = _storage.ref().child('forums/$forumId/$fileName');
+      
+      await ref.putData(file.bytes!);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      print('Upload forum attachment error: $e');
+      rethrow;
+    }
+  }
+
+  // Upload forum reply attachment
+  Future<String> uploadForumReplyAttachment(String replyId, PlatformFile file) async {
+    try {
+      final fileName = '${DateTime. now().millisecondsSinceEpoch}_${file.name}';
+      final ref = _storage.ref().child('forum_replies/$replyId/$fileName');
+      
+      await ref.putData(file.bytes!);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      print('Upload forum reply attachment error: $e');
+      rethrow;
+    }
+  }
+
 }
+
 

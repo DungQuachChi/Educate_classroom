@@ -5,13 +5,13 @@ import 'package:educate_classroom/screens/instructor/material_management_screen.
 import 'package:educate_classroom/screens/instructor/question_bank_screen.dart';
 import 'package:educate_classroom/screens/instructor/quiz_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
+import 'package:educate_classroom/screens/instructor/course_management_screen.dart'; // ← ADD THIS
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/semester_provider.dart';
 import '../auth/login_screen.dart';
 import 'semester_management_screen.dart';
-import 'course_management_screen.dart';
 
 class InstructorHomeScreen extends StatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -23,10 +23,10 @@ class InstructorHomeScreen extends StatefulWidget {
 class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
   @override
   void initState() {
-    super.initState();
+    super. initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
-      if (semesterProvider.semesters.isEmpty && !semesterProvider.isLoading) {
+      if (semesterProvider.semesters.isEmpty && ! semesterProvider.isLoading) {
         semesterProvider.initialize();
       }
     });
@@ -34,8 +34,8 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final semesterProvider = Provider.of<SemesterProvider>(context);
+    final authProvider = Provider. of<AuthProvider>(context);
+    final semesterProvider = Provider. of<SemesterProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -72,10 +72,10 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                   const SizedBox(height: 8),
                   if (semesterProvider.currentSemester != null)
                     Text(
-                      'Current Semester: ${semesterProvider.currentSemester!.name}',
+                      'Current Semester: ${semesterProvider. currentSemester! .name}',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.grey[600],
+                        color: Colors. grey[600],
                       ),
                     )
                   else
@@ -124,7 +124,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                           },
                         ),
                         _DashboardCard(
-                          icon: Icons.group,
+                          icon: Icons. group,
                           title: 'Students',
                           subtitle: 'Manage students',
                           color: Colors.orange,
@@ -138,7 +138,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                           },
                         ),
                         _DashboardCard(
-                          icon: Icons.groups,
+                          icon: Icons. groups,
                           title: 'Groups',
                           subtitle: 'Manage groups',
                           color: Colors.purple,
@@ -171,7 +171,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                           subtitle: 'Upload materials',
                           color: Colors.teal,
                           onTap: () {
-                            Navigator.push(
+                            Navigator. push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const MaterialManagementScreen(),
@@ -183,7 +183,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                           icon: Icons.quiz,
                           title: 'Question Bank',
                           subtitle: 'Manage questions',
-                          color: Colors.purple,
+                          color: Colors. purple,
                           onTap: () {
                             Navigator.push(
                               context,
@@ -213,7 +213,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                           subtitle: 'Post updates',
                           color: Colors.deepPurple,
                           onTap: () {
-                            Navigator.push(
+                            Navigator. push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const AnnouncementManagementScreen(),
@@ -264,7 +264,7 @@ class _DashboardCard extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight. bold,
                 ),
               ),
               const SizedBox(height: 4),
