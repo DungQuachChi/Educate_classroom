@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:educate_classroom/models/announcement_comment_model.dart';
 import 'package:educate_classroom/models/announcement_model.dart';
 import 'package:educate_classroom/models/assignment_model.dart';
+import 'package:educate_classroom/models/conversation_model.dart';
 import 'package:educate_classroom/models/forum_model.dart';
 import 'package:educate_classroom/models/forum_reply_model.dart';
 import 'package:educate_classroom/models/material_model.dart';
+import 'package:educate_classroom/models/message_model.dart';
 import 'package:educate_classroom/models/submission_model.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/semester_model.dart';
@@ -15,29 +17,29 @@ import '../utils/constants.dart';
 import '../models/question_model.dart';
 import '../models/quiz_model.dart';
 import '../models/quiz_attempt_model.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance; 
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Get user by ID
   Future<UserModel?> getUserById(String userId) async {
     try {
       final doc = await _firestore
-          . collection(AppConstants.usersCollection)
+          .collection(AppConstants.usersCollection)
           .doc(userId)
           .get();
-      
-      if (! doc.exists) {
+
+      if (!doc.exists) {
         print('User not found: $userId');
         return null;
       }
-      
-      return UserModel.fromMap(doc. data()!);
+
+      return UserModel.fromMap(doc.data()!);
     } catch (e) {
       print('Get user by ID error: $e');
       return null;
@@ -70,9 +72,11 @@ class DatabaseService {
         .collection(AppConstants.semestersCollection)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => SemesterModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => SemesterModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get current semester
@@ -168,7 +172,8 @@ class DatabaseService {
 
   // Bulk import semesters from CSV
   Future<Map<String, dynamic>> importSemesters(
-      List<SemesterModel> semesters) async {
+    List<SemesterModel> semesters,
+  ) async {
     int added = 0;
     int skipped = 0;
     List<String> errors = [];
@@ -193,11 +198,7 @@ class DatabaseService {
       }
     }
 
-    return {
-      'added': added,
-      'skipped': skipped,
-      'errors': errors,
-    };
+    return {'added': added, 'skipped': skipped, 'errors': errors};
   }
 
   // ==================== COURSE OPERATIONS ====================
@@ -223,9 +224,11 @@ class DatabaseService {
         .where('semesterId', isEqualTo: semesterId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CourseModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => CourseModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get single course
@@ -306,9 +309,11 @@ class DatabaseService {
         .where('courseId', isEqualTo: courseId)
         .orderBy('name')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => GroupModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => GroupModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Update group
@@ -344,9 +349,9 @@ class DatabaseService {
           .collection(AppConstants.groupsCollection)
           .doc(groupId)
           .update({
-        'studentIds': FieldValue.arrayUnion([studentId]),
-        'updatedAt': Timestamp.now(),
-      });
+            'studentIds': FieldValue.arrayUnion([studentId]),
+            'updatedAt': Timestamp.now(),
+          });
     } catch (e) {
       print('Add student to group error: $e');
       rethrow;
@@ -360,9 +365,9 @@ class DatabaseService {
           .collection(AppConstants.groupsCollection)
           .doc(groupId)
           .update({
-        'studentIds': FieldValue.arrayRemove([studentId]),
-        'updatedAt': Timestamp.now(),
-      });
+            'studentIds': FieldValue.arrayRemove([studentId]),
+            'updatedAt': Timestamp.now(),
+          });
     } catch (e) {
       print('Remove student from group error: $e');
       rethrow;
@@ -372,22 +377,22 @@ class DatabaseService {
   // ==================== STUDENT OPERATIONS ====================
 
   // Get all students
-Stream<List<UserModel>> getStudents() {
-  return _firestore
-      .collection(AppConstants.usersCollection)
-      .where('role', isEqualTo: AppConstants.roleStudent)
-      .where('isActive', isEqualTo: true) // ← Only active students
-      .snapshots()
-      .map((snapshot) {
-        var students = snapshot.docs
-            .map((doc) => UserModel.fromMap(doc.data()))
-            .toList();
-        
-        students.sort((a, b) => a.displayName.compareTo(b.displayName));
-        
-        return students;
-      });
-}
+  Stream<List<UserModel>> getStudents() {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .where('role', isEqualTo: AppConstants.roleStudent)
+        .where('isActive', isEqualTo: true) // ← Only active students
+        .snapshots()
+        .map((snapshot) {
+          var students = snapshot.docs
+              .map((doc) => UserModel.fromMap(doc.data()))
+              .toList();
+
+          students.sort((a, b) => a.displayName.compareTo(b.displayName));
+
+          return students;
+        });
+  }
 
   // Get students by IDs
   Future<List<UserModel>> getStudentsByIds(List<String> studentIds) async {
@@ -395,7 +400,7 @@ Stream<List<UserModel>> getStudents() {
 
     try {
       List<UserModel> students = [];
-      
+
       // Firestore 'in' query supports up to 10 items
       for (int i = 0; i < studentIds.length; i += 10) {
         int end = (i + 10 < studentIds.length) ? i + 10 : studentIds.length;
@@ -406,9 +411,13 @@ Stream<List<UserModel>> getStudents() {
             .where(FieldPath.documentId, whereIn: batch)
             .get();
 
-        students.addAll(snapshot.docs
-            .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>))
-            .toList());
+        students.addAll(
+          snapshot.docs
+              .map(
+                (doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>),
+              )
+              .toList(),
+        );
       }
 
       return students;
@@ -418,24 +427,24 @@ Stream<List<UserModel>> getStudents() {
     }
   }
 
-   // Update student
+  // Update student
   Future<void> updateStudent(UserModel student) async {
     try {
       await _firestore
           .collection(AppConstants.usersCollection)
           .doc(student.uid)
           .update({
-        'displayName': student.displayName,
-        'studentId': student.studentId,
-        'avatarUrl': student.avatarUrl,
-      });
+            'displayName': student.displayName,
+            'studentId': student.studentId,
+            'avatarUrl': student.avatarUrl,
+          });
     } catch (e) {
       print('Update student error: $e');
       rethrow;
     }
   }
 
-// Delete student
+  // Delete student
   Future<void> deleteStudent(String userId) async {
     try {
       // Remove student from all groups
@@ -455,17 +464,17 @@ Stream<List<UserModel>> getStudents() {
           .collection(AppConstants.usersCollection)
           .doc(userId)
           .update({
-        'isActive': false,
-        'deletedAt': FieldValue.serverTimestamp(),
-      });
+            'isActive': false,
+            'deletedAt': FieldValue.serverTimestamp(),
+          });
 
-      // Note: Firebase Auth user still exists but can't login 
+      // Note: Firebase Auth user still exists but can't login
       // because we check isActive in auth flow
     } catch (e) {
       print('Delete student error: $e');
       rethrow;
     }
-  }  
+  }
   // ==================== ASSIGNMENT OPERATIONS ====================
 
   // Create assignment
@@ -488,9 +497,11 @@ Stream<List<UserModel>> getStudents() {
         .where('courseId', isEqualTo: courseId)
         .orderBy('startDate', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AssignmentModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => AssignmentModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Update assignment
@@ -542,11 +553,15 @@ Stream<List<UserModel>> getStudents() {
   }) async {
     try {
       // Get previous submissions
-      final history = await getStudentSubmissionHistory(assignmentId, studentId);
+      final history = await getStudentSubmissionHistory(
+        assignmentId,
+        studentId,
+      );
       final attemptNumber = history.length + 1;
 
       // Check max attempts
-      if (assignment.maxAttempts > 0 && attemptNumber > assignment.maxAttempts) {
+      if (assignment.maxAttempts > 0 &&
+          attemptNumber > assignment.maxAttempts) {
         throw 'Maximum attempts (${assignment.maxAttempts}) exceeded';
       }
 
@@ -562,7 +577,9 @@ Stream<List<UserModel>> getStudents() {
         throw 'Late submissions not allowed';
       }
 
-      if (isLate && assignment.lateDeadline != null && now.isAfter(assignment.lateDeadline!)) {
+      if (isLate &&
+          assignment.lateDeadline != null &&
+          now.isAfter(assignment.lateDeadline!)) {
         throw 'Late deadline has passed';
       }
 
@@ -603,7 +620,12 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => SubmissionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => SubmissionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       print('Get submission history error: $e');
@@ -612,7 +634,9 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Get all submissions for assignment
-  Future<List<SubmissionModel>> getAllSubmissionsForAssignment(String assignmentId) async {
+  Future<List<SubmissionModel>> getAllSubmissionsForAssignment(
+    String assignmentId,
+  ) async {
     try {
       QuerySnapshot snapshot = await _firestore
           .collection(AppConstants.submissionsCollection)
@@ -621,7 +645,12 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => SubmissionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => SubmissionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       print('Get all submissions error: $e');
@@ -641,11 +670,11 @@ Stream<List<UserModel>> getStudents() {
           .collection(AppConstants.submissionsCollection)
           .doc(submissionId)
           .update({
-        'score': score,
-        'feedback': feedback,
-        'gradedAt': FieldValue.serverTimestamp(),
-        'gradedBy': gradedBy,
-      });
+            'score': score,
+            'feedback': feedback,
+            'gradedAt': FieldValue.serverTimestamp(),
+            'gradedBy': gradedBy,
+          });
     } catch (e) {
       print('Grade submission error: $e');
       rethrow;
@@ -653,7 +682,9 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Get students for assignment (based on groups)
-  Future<List<UserModel>> getStudentsForAssignment(AssignmentModel assignment) async {
+  Future<List<UserModel>> getStudentsForAssignment(
+    AssignmentModel assignment,
+  ) async {
     try {
       if (assignment.groupIds.isEmpty) {
         // All students in course - get via all groups in course
@@ -664,7 +695,10 @@ Stream<List<UserModel>> getStudents() {
 
         Set<String> studentIds = {};
         for (var doc in groupSnapshot.docs) {
-          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          final group = GroupModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
           studentIds.addAll(group.studentIds);
         }
 
@@ -678,7 +712,10 @@ Stream<List<UserModel>> getStudents() {
 
         Set<String> studentIds = {};
         for (var doc in groupSnapshot.docs) {
-          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          final group = GroupModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
           studentIds.addAll(group.studentIds);
         }
 
@@ -710,21 +747,29 @@ Stream<List<UserModel>> getStudents() {
 
       // Build CSV
       StringBuffer csv = StringBuffer();
-      csv.writeln('Student ID,Name,Email,Status,Attempts,Latest Score,Highest Score,Submitted At,Is Late,Feedback');
+      csv.writeln(
+        'Student ID,Name,Email,Status,Attempts,Latest Score,Highest Score,Submitted At,Is Late,Feedback',
+      );
 
       for (var student in students) {
         final subs = submissionsByStudent[student.uid] ?? [];
-        final latest = subs.isNotEmpty ? subs.reduce((a, b) => 
-          a.submittedAt.isAfter(b.submittedAt) ? a : b) : null;
-        
+        final latest = subs.isNotEmpty
+            ? subs.reduce(
+                (a, b) => a.submittedAt.isAfter(b.submittedAt) ? a : b,
+              )
+            : null;
+
         final graded = subs.where((s) => s.score != null).toList();
-        final highestScore = graded.isEmpty ? null : 
-          graded.map((s) => s.score!).reduce((a, b) => a > b ? a : b);
+        final highestScore = graded.isEmpty
+            ? null
+            : graded.map((s) => s.score!).reduce((a, b) => a > b ? a : b);
 
         csv.write('"${student.studentId ?? ""}"');
         csv.write(',"${student.displayName}"');
         csv.write(',"${student.email}"');
-        csv.write(',${latest == null ? "Not Submitted" : (latest.isGraded ? "Graded" : "Submitted")}');
+        csv.write(
+          ',${latest == null ? "Not Submitted" : (latest.isGraded ? "Graded" : "Submitted")}',
+        );
         csv.write(',${subs.length}');
         csv.write(',${latest?.score ?? ""}');
         csv.write(',${highestScore ?? ""}');
@@ -740,7 +785,7 @@ Stream<List<UserModel>> getStudents() {
     }
   }
 
-    // ==================== STUDENT-SPECIFIC OPERATIONS ====================
+  // ==================== STUDENT-SPECIFIC OPERATIONS ====================
 
   // Get courses that student is enrolled in (via groups)
   Future<List<CourseModel>> getStudentCourses(String studentId) async {
@@ -758,7 +803,10 @@ Stream<List<UserModel>> getStudents() {
       // Get unique course IDs
       Set<String> courseIds = {};
       for (var doc in groupSnapshot.docs) {
-        final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        final group = GroupModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
         courseIds.add(group.courseId);
       }
 
@@ -771,10 +819,12 @@ Stream<List<UserModel>> getStudents() {
             .get();
 
         if (courseDoc.exists) {
-          courses.add(CourseModel.fromMap(
-            courseDoc.data() as Map<String, dynamic>,
-            courseDoc.id,
-          ));
+          courses.add(
+            CourseModel.fromMap(
+              courseDoc.data() as Map<String, dynamic>,
+              courseDoc.id,
+            ),
+          );
         }
       }
 
@@ -814,7 +864,7 @@ Stream<List<UserModel>> getStudents() {
         );
 
         // Include if no groups specified or student is in one of the groups
-        if (assignment.groupIds.isEmpty || 
+        if (assignment.groupIds.isEmpty ||
             assignment.groupIds.any((gid) => groupIds.contains(gid))) {
           assignments.add(assignment);
         }
@@ -834,11 +884,13 @@ Stream<List<UserModel>> getStudents() {
         .collection(AppConstants.submissionsCollection)
         .where('studentId', isEqualTo: studentId)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => SubmissionModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => SubmissionModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
-    // ==================== GROUP HELPER METHODS ====================
+  // ==================== GROUP HELPER METHODS ====================
 
   // Get group by ID
   Future<GroupModel?> getGroupById(String groupId) async {
@@ -867,7 +919,10 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) =>
+                GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id),
+          )
           .toList();
     } catch (e) {
       print('Get groups by course error: $e');
@@ -876,7 +931,10 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Get student's group names in assignment
-  Future<String> getStudentGroupNames(String studentId, AssignmentModel assignment) async {
+  Future<String> getStudentGroupNames(
+    String studentId,
+    AssignmentModel assignment,
+  ) async {
     try {
       List<GroupModel> groups = [];
 
@@ -891,7 +949,9 @@ Stream<List<UserModel>> getStudents() {
       } else {
         // Get all groups for course
         final allGroups = await getGroupsByCourseAsync(assignment.courseId);
-        groups = allGroups.where((g) => g.studentIds.contains(studentId)).toList();
+        groups = allGroups
+            .where((g) => g.studentIds.contains(studentId))
+            .toList();
       }
 
       if (groups.isEmpty) return 'No Group';
@@ -901,7 +961,7 @@ Stream<List<UserModel>> getStudents() {
       return 'Unknown';
     }
   }
-    // ==================== FILE UPLOAD ====================
+  // ==================== FILE UPLOAD ====================
 
   // Upload file to Firebase Storage
   Future<String> uploadFile(File file, String path) async {
@@ -957,7 +1017,7 @@ Stream<List<UserModel>> getStudents() {
         return 'application/octet-stream';
     }
   }
-    // ==================== MATERIAL OPERATIONS ====================
+  // ==================== MATERIAL OPERATIONS ====================
 
   // Create material
   Future<String> createMaterial(MaterialModel material) async {
@@ -979,9 +1039,11 @@ Stream<List<UserModel>> getStudents() {
         .where('courseId', isEqualTo: courseId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MaterialModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => MaterialModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get student materials (based on groups)
@@ -1008,10 +1070,13 @@ Stream<List<UserModel>> getStudents() {
 
       List<MaterialModel> materials = [];
       for (var doc in materialSnapshot.docs) {
-        final material = MaterialModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        final material = MaterialModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
 
         // Include if no groups specified or student is in one of the groups
-        if (material.groupIds.isEmpty || 
+        if (material.groupIds.isEmpty ||
             material.groupIds.any((gid) => groupIds.contains(gid))) {
           materials.add(material);
         }
@@ -1059,7 +1124,7 @@ Stream<List<UserModel>> getStudents() {
       rethrow;
     }
   }
-    // ==================== QUESTION BANK OPERATIONS ====================
+  // ==================== QUESTION BANK OPERATIONS ====================
 
   // Create question
   Future<String> createQuestion(QuestionModel question) async {
@@ -1081,9 +1146,11 @@ Stream<List<UserModel>> getStudents() {
         .where('courseId', isEqualTo: courseId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => QuestionModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => QuestionModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get questions by difficulty
@@ -1099,7 +1166,12 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => QuestionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => QuestionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       print('Get questions by difficulty error: $e');
@@ -1142,7 +1214,10 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       if (doc.exists) {
-        return QuestionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return QuestionModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }
       return null;
     } catch (e) {
@@ -1173,9 +1248,11 @@ Stream<List<UserModel>> getStudents() {
         .where('courseId', isEqualTo: courseId)
         .orderBy('openTime', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => QuizModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => QuizModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get student quizzes (based on groups)
@@ -1202,10 +1279,13 @@ Stream<List<UserModel>> getStudents() {
 
       List<QuizModel> quizzes = [];
       for (var doc in quizSnapshot.docs) {
-        final quiz = QuizModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        final quiz = QuizModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
 
         // Include if no groups or student is in group
-        if (quiz.groupIds.isEmpty || 
+        if (quiz.groupIds.isEmpty ||
             quiz.groupIds.any((gid) => groupIds.contains(gid))) {
           quizzes.add(quiz);
         }
@@ -1335,7 +1415,12 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => QuizAttemptModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => QuizAttemptModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       print('Get student quiz attempts error: $e');
@@ -1355,12 +1440,12 @@ Stream<List<UserModel>> getStudents() {
           .collection(AppConstants.quizAttemptsCollection)
           .doc(attemptId)
           .update({
-        'answers': answers.map((a) => a.toMap()).toList(),
-        'score': score,
-        'totalQuestions': totalQuestions,
-        'submittedAt': FieldValue.serverTimestamp(),
-        'isCompleted': true,
-      });
+            'answers': answers.map((a) => a.toMap()).toList(),
+            'score': score,
+            'totalQuestions': totalQuestions,
+            'submittedAt': FieldValue.serverTimestamp(),
+            'isCompleted': true,
+          });
     } catch (e) {
       print('Submit quiz attempt error: $e');
       rethrow;
@@ -1377,7 +1462,12 @@ Stream<List<UserModel>> getStudents() {
           .get();
 
       return snapshot.docs
-          .map((doc) => QuizAttemptModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => QuizAttemptModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .toList();
     } catch (e) {
       print('Get all quiz attempts error: $e');
@@ -1386,10 +1476,7 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Export quiz results to CSV
-  Future<String> exportQuizResultsToCSV(
-    String quizId,
-    QuizModel quiz,
-  ) async {
+  Future<String> exportQuizResultsToCSV(String quizId, QuizModel quiz) async {
     try {
       final attempts = await getAllQuizAttempts(quizId);
       final students = await getStudentsForQuiz(quiz);
@@ -1405,15 +1492,17 @@ Stream<List<UserModel>> getStudents() {
 
       // Build CSV with proper escaping
       StringBuffer csv = StringBuffer();
-      
+
       // Header
-      csv.writeln('Student ID,Name,Email,Status,Total Attempts,Best Score,Latest Score,Percentage,Time Taken,Submitted At');
+      csv.writeln(
+        'Student ID,Name,Email,Status,Total Attempts,Best Score,Latest Score,Percentage,Time Taken,Submitted At',
+      );
 
       // Data rows
       for (var student in students) {
         final studentAttempts = attemptsByStudent[student.uid] ?? [];
         final completed = studentAttempts.where((a) => a.isCompleted).toList();
-        
+
         String studentId = student.studentId ?? '';
         String name = student.displayName;
         String email = student.email;
@@ -1426,26 +1515,30 @@ Stream<List<UserModel>> getStudents() {
         String submittedAt = '';
 
         if (completed.isNotEmpty) {
-          int best = completed.map((a) => a.score ?? 0).reduce((a, b) => a > b ? a : b);
+          int best = completed
+              .map((a) => a.score ?? 0)
+              .reduce((a, b) => a > b ? a : b);
           int latest = completed.last.score ?? 0;
-          
+
           bestScore = '$best/${quiz.totalQuestions}';
           latestScore = '$latest/${quiz.totalQuestions}';
-          
+
           if (quiz.totalQuestions > 0) {
             double pct = (latest / quiz.totalQuestions) * 100;
             percentage = '${pct.toStringAsFixed(1)}%';
           }
-          
+
           Duration? duration = completed.last.timeTaken;
           if (duration != null) {
             int minutes = duration.inMinutes;
             int seconds = duration.inSeconds % 60;
             timeTaken = '${minutes}m ${seconds}s';
           }
-          
+
           if (completed.last.submittedAt != null) {
-            submittedAt = DateFormat('yyyy-MM-dd HH:mm:ss').format(completed.last.submittedAt!);
+            submittedAt = DateFormat(
+              'yyyy-MM-dd HH:mm:ss',
+            ).format(completed.last.submittedAt!);
           }
         }
 
@@ -1481,12 +1574,12 @@ Stream<List<UserModel>> getStudents() {
   // Helper method to properly escape CSV fields
   String _escapeCsvField(String field) {
     if (field.isEmpty) return '""';
-    
+
     // If field contains comma, quote, or newline, wrap in quotes and escape existing quotes
     if (field.contains(',') || field.contains('"') || field.contains('\n')) {
       return '"${field.replaceAll('"', '""')}"';
     }
-    
+
     return field;
   }
 
@@ -1502,7 +1595,10 @@ Stream<List<UserModel>> getStudents() {
 
         Set<String> studentIds = {};
         for (var doc in groupSnapshot.docs) {
-          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          final group = GroupModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
           studentIds.addAll(group.studentIds);
         }
 
@@ -1516,7 +1612,10 @@ Stream<List<UserModel>> getStudents() {
 
         Set<String> studentIds = {};
         for (var doc in groupSnapshot.docs) {
-          final group = GroupModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          final group = GroupModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
           studentIds.addAll(group.studentIds);
         }
 
@@ -1527,7 +1626,7 @@ Stream<List<UserModel>> getStudents() {
       return [];
     }
   }
-    // ==================== ANNOUNCEMENT OPERATIONS ====================
+  // ==================== ANNOUNCEMENT OPERATIONS ====================
 
   // Create announcement
   Future<String> createAnnouncement(AnnouncementModel announcement) async {
@@ -1549,9 +1648,11 @@ Stream<List<UserModel>> getStudents() {
         .where('courseId', isEqualTo: courseId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AnnouncementModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => AnnouncementModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get student announcements (based on groups)
@@ -1578,10 +1679,13 @@ Stream<List<UserModel>> getStudents() {
 
       List<AnnouncementModel> announcements = [];
       for (var doc in announcementSnapshot.docs) {
-        final announcement = AnnouncementModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        final announcement = AnnouncementModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
 
         // Include if no groups or student is in group
-        if (announcement.groupIds.isEmpty || 
+        if (announcement.groupIds.isEmpty ||
             announcement.groupIds.any((gid) => groupIds.contains(gid))) {
           announcements.add(announcement);
         }
@@ -1632,14 +1736,17 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Mark announcement as viewed
-  Future<void> markAnnouncementAsViewed(String announcementId, String userId) async {
+  Future<void> markAnnouncementAsViewed(
+    String announcementId,
+    String userId,
+  ) async {
     try {
       await _firestore
           .collection(AppConstants.announcementsCollection)
           .doc(announcementId)
           .update({
-        'viewedBy': FieldValue.arrayUnion([userId]),
-      });
+            'viewedBy': FieldValue.arrayUnion([userId]),
+          });
     } catch (e) {
       print('Mark announcement as viewed error: $e');
       rethrow;
@@ -1654,17 +1761,19 @@ Stream<List<UserModel>> getStudents() {
   ) async {
     try {
       // Ensure key has no spaces
-      final key = attachmentIndex.toString(). trim();
-      
-      print('🔽 Tracking download: announcement=$announcementId, index=$attachmentIndex, key="$key", user=$userId');
-      
+      final key = attachmentIndex.toString().trim();
+
+      print(
+        '🔽 Tracking download: announcement=$announcementId, index=$attachmentIndex, key="$key", user=$userId',
+      );
+
       await _firestore
           .collection(AppConstants.announcementsCollection)
           .doc(announcementId)
           .update({
-        'downloadedBy.$key': FieldValue.arrayUnion([userId]),
-      });
-      
+            'downloadedBy.$key': FieldValue.arrayUnion([userId]),
+          });
+
       print('Download tracked successfully with key: "$key"');
     } catch (e) {
       print('Track attachment download error: $e');
@@ -1675,7 +1784,9 @@ Stream<List<UserModel>> getStudents() {
   // ==================== ANNOUNCEMENT COMMENT OPERATIONS ====================
 
   // Add comment
-  Future<String> addAnnouncementComment(AnnouncementCommentModel comment) async {
+  Future<String> addAnnouncementComment(
+    AnnouncementCommentModel comment,
+  ) async {
     try {
       DocumentReference doc = await _firestore
           .collection(AppConstants.announcementCommentsCollection)
@@ -1688,19 +1799,27 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Get comments for announcement
-  Stream<List<AnnouncementCommentModel>> getAnnouncementComments(String announcementId) {
+  Stream<List<AnnouncementCommentModel>> getAnnouncementComments(
+    String announcementId,
+  ) {
     return _firestore
         .collection(AppConstants.announcementCommentsCollection)
         .where('announcementId', isEqualTo: announcementId)
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AnnouncementCommentModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => AnnouncementCommentModel.fromMap(doc.data(), doc.id),
+              )
+              .toList(),
+        );
   }
 
   // Update comment
-  Future<void> updateAnnouncementComment(AnnouncementCommentModel comment) async {
+  Future<void> updateAnnouncementComment(
+    AnnouncementCommentModel comment,
+  ) async {
     try {
       await _firestore
           .collection(AppConstants.announcementCommentsCollection)
@@ -1747,20 +1866,22 @@ Stream<List<UserModel>> getStudents() {
         .orderBy('isPinned', descending: true)
         .orderBy('lastActivityAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot. docs
-            .map((doc) => ForumModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ForumModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get single forum
-  Future<ForumModel? > getForum(String forumId) async {
+  Future<ForumModel?> getForum(String forumId) async {
     try {
       final doc = await _firestore
           .collection(AppConstants.forumsCollection)
           .doc(forumId)
           .get();
-      
-      if (! doc.exists) return null;
+
+      if (!doc.exists) return null;
       return ForumModel.fromMap(doc.data()!, doc.id);
     } catch (e) {
       print('Get forum error: $e');
@@ -1772,8 +1893,8 @@ Stream<List<UserModel>> getStudents() {
   Future<void> updateForum(String forumId, Map<String, dynamic> updates) async {
     try {
       await _firestore
-          .collection(AppConstants. forumsCollection)
-          . doc(forumId)
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
           .update(updates);
     } catch (e) {
       print('Update forum error: $e');
@@ -1786,14 +1907,14 @@ Stream<List<UserModel>> getStudents() {
     try {
       // Delete all replies first
       final replies = await _firestore
-          . collection(AppConstants.forumRepliesCollection)
+          .collection(AppConstants.forumRepliesCollection)
           .where('forumId', isEqualTo: forumId)
           .get();
-      
+
       for (var doc in replies.docs) {
         await doc.reference.delete();
       }
-      
+
       // Delete forum
       await _firestore
           .collection(AppConstants.forumsCollection)
@@ -1838,17 +1959,17 @@ Stream<List<UserModel>> getStudents() {
           .collection(AppConstants.forumsCollection)
           .where('courseId', isEqualTo: courseId)
           .get();
-      
+
       final allForums = snapshot.docs
           .map((doc) => ForumModel.fromMap(doc.data(), doc.id))
           .toList();
-      
+
       // Filter by search query (case-insensitive)
       final searchLower = query.toLowerCase();
       return allForums.where((forum) {
         return forum.title.toLowerCase().contains(searchLower) ||
-               forum.description.toLowerCase().contains(searchLower) ||
-               forum.tags.any((tag) => tag. toLowerCase().contains(searchLower));
+            forum.description.toLowerCase().contains(searchLower) ||
+            forum.tags.any((tag) => tag.toLowerCase().contains(searchLower));
       }).toList();
     } catch (e) {
       print('Search forums error: $e');
@@ -1863,28 +1984,28 @@ Stream<List<UserModel>> getStudents() {
       final docRef = await _firestore
           .collection(AppConstants.forumRepliesCollection)
           .add(reply.toMap());
-      
+
       // Update forum reply count and last activity
       final forumRef = _firestore
           .collection(AppConstants.forumsCollection)
-          . doc(reply.forumId);
-      
-      await _firestore. runTransaction((transaction) async {
+          .doc(reply.forumId);
+
+      await _firestore.runTransaction((transaction) async {
         final forumDoc = await transaction.get(forumRef);
-        
-        if (! forumDoc.exists) {
+
+        if (!forumDoc.exists) {
           throw 'Forum not found';
         }
-        
-        final currentReplyCount = forumDoc. data()?['replyCount'] ?? 0;
-        
+
+        final currentReplyCount = forumDoc.data()?['replyCount'] ?? 0;
+
         transaction.update(forumRef, {
           'replyCount': currentReplyCount + 1,
           'lastActivityAt': Timestamp.fromDate(reply.createdAt),
           'lastActivityBy': reply.createdBy,
         });
       });
-      
+
       return docRef.id;
     } catch (e) {
       print('Create forum reply error: $e');
@@ -1899,13 +2020,18 @@ Stream<List<UserModel>> getStudents() {
         .where('forumId', isEqualTo: forumId)
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ForumReplyModel. fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ForumReplyModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Update forum reply
-  Future<void> updateForumReply(String replyId, Map<String, dynamic> updates) async {
+  Future<void> updateForumReply(
+    String replyId,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       await _firestore
           .collection(AppConstants.forumRepliesCollection)
@@ -1925,14 +2051,12 @@ Stream<List<UserModel>> getStudents() {
           .collection(AppConstants.forumRepliesCollection)
           .doc(replyId)
           .delete();
-      
+
       // Decrement forum reply count
       await _firestore
-          .collection(AppConstants. forumsCollection)
-          . doc(forumId)
-          .update({
-        'replyCount': FieldValue.increment(-1),
-      });
+          .collection(AppConstants.forumsCollection)
+          .doc(forumId)
+          .update({'replyCount': FieldValue.increment(-1)});
     } catch (e) {
       print('Delete forum reply error: $e');
       rethrow;
@@ -1940,11 +2064,14 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Upload forum attachment
-  Future<String> uploadForumAttachment(String forumId, PlatformFile file) async {
+  Future<String> uploadForumAttachment(
+    String forumId,
+    PlatformFile file,
+  ) async {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       final ref = _storage.ref().child('forums/$forumId/$fileName');
-      
+
       await ref.putData(file.bytes!);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -1954,11 +2081,14 @@ Stream<List<UserModel>> getStudents() {
   }
 
   // Upload forum reply attachment
-  Future<String> uploadForumReplyAttachment(String replyId, PlatformFile file) async {
+  Future<String> uploadForumReplyAttachment(
+    String replyId,
+    PlatformFile file,
+  ) async {
     try {
-      final fileName = '${DateTime. now().millisecondsSinceEpoch}_${file.name}';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       final ref = _storage.ref().child('forum_replies/$replyId/$fileName');
-      
+
       await ref.putData(file.bytes!);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -1966,7 +2096,275 @@ Stream<List<UserModel>> getStudents() {
       rethrow;
     }
   }
+  // ==================== MESSAGING OPERATIONS ====================
 
+  // Get or create conversation between student and instructor
+  Future<String> getOrCreateConversation(
+    String studentId,
+    String instructorId,
+  ) async {
+    try {
+      final conversationId = ConversationModel.generateId(
+        studentId,
+        instructorId,
+      );
+
+      final doc = await _firestore
+          .collection(AppConstants.conversationsCollection)
+          .doc(conversationId)
+          .get();
+
+      if (!doc.exists) {
+        // Create new conversation
+        final conversation = ConversationModel(
+          id: conversationId,
+          studentId: studentId,
+          instructorId: instructorId,
+          lastMessage: '',
+          lastMessageAt: DateTime.now(),
+          lastMessageSenderId: '',
+          createdAt: DateTime.now(),
+        );
+
+        await _firestore
+            .collection(AppConstants.conversationsCollection)
+            .doc(conversationId)
+            .set(conversation.toMap());
+      }
+
+      return conversationId;
+    } catch (e) {
+      print('Get/create conversation error: $e');
+      rethrow;
+    }
+  }
+
+  // Send message
+  Future<String> sendMessage(MessageModel message) async {
+    try {
+      // Add message
+      final docRef = await _firestore
+          .collection(AppConstants.messagesCollection)
+          .add(message.toMap());
+
+      // Update conversation
+      final conversationRef = _firestore
+          .collection(AppConstants.conversationsCollection)
+          .doc(message.conversationId);
+
+      await conversationRef.update({
+        'lastMessage': message.content.isEmpty
+            ? 'Attachment'
+            : message.content,
+        'lastMessageAt': Timestamp.fromDate(message.sentAt),
+        'lastMessageSenderId': message.senderId,
+        'unreadCount_${message.receiverId}': FieldValue.increment(1),
+      });
+
+      return docRef.id;
+    } catch (e) {
+      print('Send message error: $e');
+      rethrow;
+    }
+  }
+
+  // Get messages for conversation
+  Stream<List<MessageModel>> getMessages(String conversationId) {
+    return _firestore
+        .collection(AppConstants.messagesCollection)
+        .where('conversationId', isEqualTo: conversationId)
+        .orderBy('sentAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  // Get conversations for user
+  Stream<List<ConversationModel>> getConversations(
+    String userId,
+    bool isInstructor,
+  ) {
+    final field = isInstructor ? 'instructorId' : 'studentId';
+
+    return _firestore
+        .collection(AppConstants.conversationsCollection)
+        .where(field, isEqualTo: userId)
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => ConversationModel.fromMap(doc.data(), doc.id, userId),
+              )
+              .toList(),
+        );
+  }
+
+  // Mark messages as read
+  Future<void> markMessagesAsRead(String conversationId, String userId) async {
+    try {
+      // Get unread messages
+      final unreadMessages = await _firestore
+          .collection(AppConstants.messagesCollection)
+          .where('conversationId', isEqualTo: conversationId)
+          .where('receiverId', isEqualTo: userId)
+          .where('isRead', isEqualTo: false)
+          .get();
+
+      // Batch update
+      final batch = _firestore.batch();
+
+      for (var doc in unreadMessages.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+
+      await batch.commit();
+
+      // Reset unread count
+      await _firestore
+          .collection(AppConstants.conversationsCollection)
+          .doc(conversationId)
+          .update({'unreadCount_$userId': 0});
+    } catch (e) {
+      print('Mark messages as read error: $e');
+      rethrow;
+    }
+  }
+
+  // Upload message attachment
+  Future<String> uploadMessageAttachment(
+    String conversationId,
+    PlatformFile file,
+  ) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      final ref = _storage.ref().child('messages/$conversationId/$fileName');
+
+      await ref.putData(file.bytes!);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      print('Upload message attachment error: $e');
+      rethrow;
+    }
+  }
+
+  // Get instructors for student to message
+    /// Get all students enrolled in instructor's courses
+  Future<List<UserModel>> getStudentsForInstructor(String instructorId) async {
+    try {
+      print('🔍 Getting students for instructor: $instructorId');
+      
+      // Get instructor's courses
+      final coursesSnapshot = await _firestore
+          .collection(AppConstants.coursesCollection)
+          .where('instructorId', isEqualTo: instructorId)
+          . get();
+
+      if (coursesSnapshot.docs.isEmpty) {
+        print('Instructor has no courses');
+        return [];
+      }
+
+      final courseIds = coursesSnapshot.docs. map((doc) => doc.id).toList();
+      print('Instructor has ${courseIds.length} courses');
+
+      // Get all groups from these courses
+      Set<String> studentIds = {};
+      
+      for (final courseId in courseIds) {
+        final groupsSnapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where('courseId', isEqualTo: courseId)
+            .get();
+
+        for (final groupDoc in groupsSnapshot.docs) {
+          final group = GroupModel.fromMap(groupDoc. data(), groupDoc.id);
+          studentIds.addAll(group.studentIds);
+        }
+      }
+
+      print('Found ${studentIds. length} unique students');
+
+      if (studentIds.isEmpty) {
+        return [];
+      }
+
+      // Get student details
+      final students = await getStudentsByIds(studentIds. toList());
+      
+      // Sort by name
+      students.sort((a, b) => a.displayName. compareTo(b.displayName));
+      
+      print('Returning ${students.length} students');
+      return students;
+      
+    } catch (e) {
+      print('Get students for instructor error: $e');
+      return [];
+    }
+  }
+  /// Get all instructors teaching courses the student is enrolled in
+  Future<List<UserModel>> getInstructorsForStudent(String studentId) async {
+    try {
+      print('Getting instructors for student: $studentId');
+
+      // Get student's courses
+      final courses = await getStudentCourses(studentId);
+      print('Student has ${courses.length} courses');
+
+      if (courses.isEmpty) {
+        return [];
+      }
+
+      // Get unique instructor IDs from courses
+      final Set<String> instructorIds = {};
+      for (final course in courses) {
+        if (course.instructorId.isNotEmpty) {
+          instructorIds.add(course.instructorId);
+          print(
+            'Course "${course.name}" instructor: ${course.instructorId}',
+          );
+        }
+      }
+
+      print('Found! ${instructorIds.length} unique instructor IDs');
+
+      if (instructorIds.isEmpty) {
+        return [];
+      }
+
+      // Fetch each instructor's details
+      final List<UserModel> instructors = [];
+
+      for (final instructorId in instructorIds) {
+        try {
+          final instructor = await getUserById(instructorId);
+
+          if (instructor != null) {
+            if (instructor.role == 'instructor') {
+              instructors.add(instructor);
+              print('Added instructor: ${instructor.displayName}');
+            } else {
+              print(
+                'User $instructorId is not an instructor (role: ${instructor.role})',
+              );
+            }
+          } else {
+            print('Instructor $instructorId not found');
+          }
+        } catch (e) {
+          print('Error fetching instructor $instructorId: $e');
+        }
+      }
+
+      print('Returning ${instructors.length} instructors');
+      return instructors;
+    } catch (e) {
+      print('Get instructors for student error: $e');
+      return [];
+    }
+  }
 }
-
-

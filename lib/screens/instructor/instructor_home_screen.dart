@@ -2,10 +2,12 @@ import 'package:educate_classroom/screens/instructor/announcement_management_scr
 import 'package:educate_classroom/screens/instructor/assignment_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/group_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/material_management_screen.dart';
+import 'package:educate_classroom/screens/instructor/message_list_screen.dart';
 import 'package:educate_classroom/screens/instructor/question_bank_screen.dart';
 import 'package:educate_classroom/screens/instructor/quiz_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/student_management_screen.dart';
 import 'package:educate_classroom/screens/instructor/course_management_screen.dart'; // ← ADD THIS
+import 'package:educate_classroom/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -31,7 +33,7 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
       }
     });
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider. of<AuthProvider>(context);
@@ -217,6 +219,20 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const AnnouncementManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                                                _DashboardCard(
+                          icon: Icons.message,
+                          title: 'Messages',
+                          subtitle: 'Student messages',
+                          color: Colors.teal,
+                          onTap: () {
+                            Navigator. push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MessageListScreen(),
                               ),
                             );
                           },
