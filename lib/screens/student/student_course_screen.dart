@@ -34,37 +34,56 @@ class _StudentCourseScreenState extends State<StudentCourseScreen> {
     _loadAssignments();
   }
 
+  @override
+  void dispose() {
+    // Clean up if needed
+    super.dispose();
+  }
+
   Future<void> _loadAssignments() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.user != null) {
-      try {
-        final assignments = await _databaseService.getStudentAssignments(
+    final authProvider = Provider. of<AuthProvider>(context, listen: false);
+    
+    if (authProvider.user == null) {
+      if (! mounted) return;
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final assignments = await _databaseService.getStudentAssignments(
+        authProvider.user!.uid,
+        widget.course.id,
+      );
+
+      // Load submission history for each assignment
+      Map<String, List<SubmissionModel>> history = {};
+      for (var assignment in assignments) {
+        final subs = await _databaseService.getStudentSubmissionHistory(
+          assignment.id,
           authProvider.user!.uid,
-          widget.course.id,
         );
+        history[assignment.id] = subs;
+      }
 
-        // Load submission history for each assignment
-        Map<String, List<SubmissionModel>> history = {};
-        for (var assignment in assignments) {
-          final subs = await _databaseService.getStudentSubmissionHistory(
-            assignment.id,
-            authProvider.user!.uid,
-          );
-          history[assignment.id] = subs;
-        }
-
-        setState(() {
-          _assignments = assignments;
-          _submissionHistory = history;
-          _isLoading = false;
-        });
-      } catch (e) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
+      // Check mounted before setState
+      if (!mounted) return;
+      
+      setState(() {
+        _assignments = assignments;
+        _submissionHistory = history;
+        _isLoading = false;
+      });
+    } catch (e) {
+      // Check mounted before setState
+      if (! mounted) return;
+      
+      setState(() => _isLoading = false);
+      
+      // Show error only if still mounted
+      if (mounted) {
+        ScaffoldMessenger. of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
