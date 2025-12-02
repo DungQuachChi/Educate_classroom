@@ -1,3 +1,4 @@
+import 'package:educate_classroom/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/course_provider.dart';
@@ -5,12 +6,12 @@ import '../../models/course_model.dart';
 
 class CourseFormScreen extends StatefulWidget {
   final String semesterId;
-  final CourseModel? course;
+  final CourseModel?  course;
 
   const CourseFormScreen({
     super.key,
-    required this.semesterId,
-    this.course,
+    required this. semesterId,
+    this. course,
   });
 
   @override
@@ -33,8 +34,8 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
     if (isEditing) {
       _codeController.text = widget.course!.code;
       _nameController.text = widget.course!.name;
-      _descriptionController.text = widget.course!.description ?? '';
-      _sessions = widget.course!.sessions;
+      _descriptionController.text = widget.course!.description ??  '';
+      _sessions = widget. course!.sessions;
     }
   }
 
@@ -42,7 +43,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
   void dispose() {
     _codeController.dispose();
     _nameController.dispose();
-    _descriptionController.dispose();
+    _descriptionController. dispose();
     super.dispose();
   }
 
@@ -50,28 +51,33 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
-
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final courseProvider = Provider.of<CourseProvider>(context, listen: false);
 
     try {
       if (isEditing) {
+        // ✅ FIXED: Preserve instructorId when updating
         await courseProvider.updateCourse(
-          widget.course!.copyWith(
-            code: _codeController.text.trim(),
+          widget.course! .copyWith(
+            code: _codeController.text. trim(),
             name: _nameController.text.trim(),
-            description: _descriptionController.text.trim().isEmpty
+            description: _descriptionController.text.trim(). isEmpty
                 ? null
                 : _descriptionController.text.trim(),
             sessions: _sessions,
+            instructorId: widget.course!.instructorId, // ← ADD THIS to preserve instructorId
+            updatedAt: DateTime.now(), // ← ADD THIS to track when updated
           ),
         );
       } else {
+        // ✅ Creating new course - already correct
         final newCourse = CourseModel(
           id: '',
           code: _codeController.text.trim(),
           name: _nameController.text.trim(),
           sessions: _sessions,
           semesterId: widget.semesterId,
+          instructorId: authProvider.user!.uid,
           description: _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
@@ -81,7 +87,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       }
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator. pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -89,6 +95,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                   ? 'Course updated successfully'
                   : 'Course created successfully',
             ),
+            backgroundColor: Colors.green,
           ),
         );
       }
@@ -97,7 +104,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors. red,
           ),
         );
       }
@@ -124,7 +131,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
               controller: _codeController,
               decoration: const InputDecoration(
                 labelText: 'Course Code *',
-                hintText: 'e.g., CS101, IT201',
+                hintText: 'e. g., CS101, IT201',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.tag),
               ),
@@ -218,7 +225,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
             // Save Button
             ElevatedButton(
               onPressed: _isSaving ? null : _save,
-              style: ElevatedButton.styleFrom(
+              style: ElevatedButton. styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _isSaving

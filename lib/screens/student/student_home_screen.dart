@@ -6,6 +6,7 @@ import '../../services/database_service.dart';
 import '../auth/login_screen.dart';
 import 'student_course_screen.dart';
 import 'student_announcement_screen.dart';
+import 'student_message_list_screen.dart'; // ← Add this import
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -32,17 +33,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         final courses = await _databaseService.getStudentCourses(
           authProvider.user!.uid,
         );
+        
+        if (! mounted) return;
+        
         setState(() {
           _courses = courses;
           _isLoading = false;
         });
       } catch (e) {
+        if (!mounted) return;
+        
         setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -60,7 +64,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Select Course'),
         content: SizedBox(
-          width: double. maxFinite,
+          width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
             itemCount: _courses.length,
@@ -72,13 +76,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: Colors.deepPurple.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius. circular(8),
                   ),
                   child: const Icon(Icons.school, color: Colors.deepPurple),
                 ),
                 title: Text(course.name),
                 subtitle: Text(course.code),
-                onTap: () => Navigator. pop(context, course),
+                onTap: () => Navigator.pop(context, course),
               );
             },
           ),
@@ -87,7 +91,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
 
     if (selectedCourse != null && context.mounted) {
-      Navigator.push(
+      Navigator. push(
         context,
         MaterialPageRoute(
           builder: (_) => StudentAnnouncementScreen(course: selectedCourse),
@@ -115,7 +119,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.signOut();
-              if (context.mounted) {
+              if (context. mounted) {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
@@ -125,7 +129,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ],
       ),
       body: _isLoading
-          ?  const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -146,10 +150,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         style: TextStyle(fontSize: 14, color: Colors.white70),
                       ),
                       Text(
-                        authProvider. user?.displayName ?? 'Student',
+                        authProvider.user?.displayName ?? 'Student',
                         style: const TextStyle(
                           fontSize: 24,
-                          fontWeight: FontWeight. bold,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
@@ -159,7 +163,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           'ID: ${authProvider.user! .studentId}',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.white70,
+                            color: Colors. white70,
                           ),
                         ),
                       ],
@@ -168,74 +172,105 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
 
                 // Quick Actions
-                if (_courses.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Quick Actions',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight. bold,
-                          ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 80,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _QuickActionCard(
-                                icon: Icons.campaign,
-                                label: 'Announcements',
-                                color: Colors.deepPurple,
-                                onTap: () => _showCourseSelector(context),
-                              ),
-                              const SizedBox(width: 12),
-                              _QuickActionCard(
-                                icon: Icons.assignment,
-                                label: 'Assignments',
-                                color: Colors.green,
-                                onTap: () {
-                                  if (_courses.isNotEmpty) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => StudentCourseScreen(
-                                          course: _courses. first,
-                                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 80,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            // Messages - Always available
+                            _QuickActionCard(
+                              icon: Icons. message,
+                              label: 'Messages',
+                              color: Colors.teal,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const StudentMessageListScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // Announcements
+                            _QuickActionCard(
+                              icon: Icons.campaign,
+                              label: 'Announcements',
+                              color: Colors.deepPurple,
+                              onTap: () => _showCourseSelector(context),
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // Assignments
+                            _QuickActionCard(
+                              icon: Icons. assignment,
+                              label: 'Assignments',
+                              color: Colors.green,
+                              onTap: () {
+                                if (_courses.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StudentCourseScreen(
+                                        course: _courses. first,
                                       ),
-                                    );
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: 12),
-                              _QuickActionCard(
-                                icon: Icons.quiz,
-                                label: 'Quizzes',
-                                color: Colors.indigo,
-                                onTap: () {
-                                  if (_courses.isNotEmpty) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => StudentCourseScreen(
-                                          course: _courses.first,
-                                        ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context). showSnackBar(
+                                    const SnackBar(
+                                      content: Text('No courses enrolled'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // Quizzes
+                            _QuickActionCard(
+                              icon: Icons.quiz,
+                              label: 'Quizzes',
+                              color: Colors.indigo,
+                              onTap: () {
+                                if (_courses.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StudentCourseScreen(
+                                        course: _courses.first,
                                       ),
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('No courses enrolled'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
 
                 // Courses Section
                 Padding(
@@ -273,7 +308,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 'You will see courses when assigned to a group',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey,
+                                  color: Colors. grey,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -305,7 +340,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
 
-  const _CourseCard({required this.course});
+  const _CourseCard({required this. course});
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +392,7 @@ class _CourseCard extends StatelessWidget {
                         ),
                       )
                     : const Center(
-                        child: Icon(Icons.book, size: 50, color: Colors.white),
+                        child: Icon(Icons. book, size: 50, color: Colors.white),
                       ),
               ),
             ),
@@ -369,7 +404,7 @@ class _CourseCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    course. code,
+                    course.code,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -405,7 +440,7 @@ class _QuickActionCard extends StatelessWidget {
 
   const _QuickActionCard({
     required this.icon,
-    required this.label,
+    required this. label,
     required this. color,
     required this.onTap,
   });
