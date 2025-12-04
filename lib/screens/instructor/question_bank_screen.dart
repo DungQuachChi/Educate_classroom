@@ -331,7 +331,7 @@ class _QuestionCard extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              String.fromCharCode(65 + index), // A, B, C, D
+                              String.fromCharCode(65 + index), 
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                           ),

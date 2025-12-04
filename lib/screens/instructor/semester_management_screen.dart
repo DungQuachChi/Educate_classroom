@@ -5,6 +5,7 @@ import '../../providers/semester_provider.dart';
 import '../../models/semester_model.dart';
 import 'semester_form_screen.dart';
 import 'semester_import_screen.dart';
+import 'semester_details_screen.dart';
 
 class SemesterManagementScreen extends StatelessWidget {
   const SemesterManagementScreen({super.key});
@@ -108,8 +109,12 @@ class _SemesterCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // Navigate to semester details (courses, groups, etc.)
-          // We'll implement this later
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SemesterDetailsScreen(semester: semester),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

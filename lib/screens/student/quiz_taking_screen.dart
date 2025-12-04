@@ -24,8 +24,8 @@ class QuizTakingScreen extends StatefulWidget {
 
 class _QuizTakingScreenState extends State<QuizTakingScreen> {
   late List<QuestionModel> _orderedQuestions;
-  late Map<String, int?> _answers; // questionId -> selectedChoiceIndex
-  late Map<String, List<int>> _shuffledChoices; // questionId -> shuffled indices
+  late Map<String, int?> _answers;
+  late Map<String, List<int>> _shuffledChoices;
   int _currentQuestionIndex = 0;
   Timer? _timer;
   late DateTime _endTime;
@@ -168,7 +168,7 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
         } else {
           answers.add(QuizAnswer(
             questionId: question.id,
-            selectedAnswerIndex: -1, // Not answered
+            selectedAnswerIndex: -1, 
           ));
         }
       }
@@ -426,8 +426,8 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
         : List.generate(question.choices.length, (i) => i);
 
     return choiceIndices.asMap().entries.map((entry) {
-      final displayIndex = entry.key; // A, B, C, D index for display
-      final originalIndex = entry.value; // Original choice index
+      final displayIndex = entry.key; 
+      final originalIndex = entry.value; 
       final choice = question.choices[originalIndex];
       final isSelected = _answers[question.id] == displayIndex;
 
@@ -459,7 +459,7 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    String.fromCharCode(65 + displayIndex), // A, B, C, D
+                    String.fromCharCode(65 + displayIndex),
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,

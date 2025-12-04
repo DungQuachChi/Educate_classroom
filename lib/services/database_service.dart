@@ -7,6 +7,7 @@ import 'package:educate_classroom/models/forum_model.dart';
 import 'package:educate_classroom/models/forum_reply_model.dart';
 import 'package:educate_classroom/models/material_model.dart';
 import 'package:educate_classroom/models/message_model.dart';
+import 'package:educate_classroom/models/notification_model.dart';
 import 'package:educate_classroom/models/submission_model.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/semester_model.dart';
@@ -373,6 +374,68 @@ class DatabaseService {
       rethrow;
     }
   }
+    // Get courses by semester
+  Future<List<CourseModel>> getCoursesBySemesterAsync(String semesterId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(AppConstants.coursesCollection)
+          .where('semesterId', isEqualTo: semesterId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => CourseModel.fromMap(
+                doc.data() as Map<String, dynamic>,
+                doc.id,
+              ))
+          .toList();
+    } catch (e) {
+      print('Get courses by semester async error: $e');
+      return [];
+    }
+  }
+
+  // Get groups by semester (async version for one-time fetch)
+  Future<List<GroupModel>> getGroupsBySemesterAsync(String semesterId) async {
+    try {
+      // First get all courses in semester
+      final courses = await getCoursesBySemesterAsync(semesterId);
+      
+      if (courses.isEmpty) {
+        return [];
+      }
+
+      // Get course IDs
+      final courseIds = courses.map((c) => c.id).toList();
+
+      // Get all groups for these courses
+      List<GroupModel> allGroups = [];
+      for (int i = 0; i < courseIds.length; i += 10) {
+        int end = (i + 10 < courseIds.length) ? i + 10 : courseIds.length;
+        List<String> batch = courseIds.sublist(i, end);
+
+        QuerySnapshot snapshot = await _firestore
+            .collection(AppConstants.groupsCollection)
+            .where('courseId', whereIn: batch)
+            .orderBy('name')
+            .get();
+
+        allGroups.addAll(
+          snapshot.docs
+              .map((doc) => GroupModel.fromMap(
+                    doc.data() as Map<String, dynamic>,
+                    doc.id,
+                  ))
+              .toList(),
+        );
+      }
+
+      return allGroups;
+    } catch (e) {
+      print('Get groups by semester async error: $e');
+      return [];
+    }
+  }
 
   // ==================== STUDENT OPERATIONS ====================
 
@@ -381,7 +444,7 @@ class DatabaseService {
     return _firestore
         .collection(AppConstants.usersCollection)
         .where('role', isEqualTo: AppConstants.roleStudent)
-        .where('isActive', isEqualTo: true) // ← Only active students
+        .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
           var students = snapshot.docs
@@ -599,6 +662,8 @@ class DatabaseService {
           .collection(AppConstants.submissionsCollection)
           .add(submission.toMap());
 
+      await notifyAssignmentSubmitted(studentId, assignment, attemptNumber);
+      
       return doc.id;
     } catch (e) {
       print('Submit assignment error: $e');
@@ -666,15 +731,54 @@ class DatabaseService {
     required String gradedBy,
   }) async {
     try {
+      final submissionDoc = await _firestore
+          .collection(AppConstants.submissionsCollection)
+          .doc(submissionId)
+          .get();
+
+      if (!  submissionDoc.exists) {
+        throw 'Submission not found';
+      }
+
+      final submission = SubmissionModel.fromMap(
+        submissionDoc.data()! ,
+        submissionDoc.id,
+      );
+
+      // Update submission with grade
       await _firestore
           .collection(AppConstants.submissionsCollection)
           .doc(submissionId)
           .update({
-            'score': score,
-            'feedback': feedback,
-            'gradedAt': FieldValue.serverTimestamp(),
-            'gradedBy': gradedBy,
-          });
+        'score': score,
+        'feedback': feedback,
+        'gradedAt': FieldValue.serverTimestamp(),
+        'gradedBy': gradedBy,
+      });
+
+      print('Graded submission: $submissionId - Score: $score');
+
+      final assignmentDoc = await _firestore
+          .collection(AppConstants.assignmentsCollection)
+          .doc(submission.assignmentId)
+          .get();
+
+      if (assignmentDoc.exists) {
+        final assignment = AssignmentModel. fromMap(
+          assignmentDoc.data()!,
+          assignmentDoc.id,
+        );
+        
+        print('Sending grading notification to student: ${submission.studentId}');
+        await notifyAssignmentGraded(
+          submission.studentId,
+          assignment,
+          score,
+        );
+        print('Grading notification sent');
+      } else {
+        print('Assignment not found for notification');
+      }
     } catch (e) {
       print('Grade submission error: $e');
       rethrow;
@@ -863,7 +967,6 @@ class DatabaseService {
           doc.id,
         );
 
-        // Include if no groups specified or student is in one of the groups
         if (assignment.groupIds.isEmpty ||
             assignment.groupIds.any((gid) => groupIds.contains(gid))) {
           assignments.add(assignment);
@@ -1111,7 +1214,6 @@ class DatabaseService {
         await ref.delete();
       } catch (e) {
         print('Delete file from storage error: $e');
-        // Continue even if file deletion fails
       }
 
       // Delete document
@@ -1436,16 +1538,63 @@ class DatabaseService {
     required int totalQuestions,
   }) async {
     try {
+      final attemptDoc = await _firestore
+          .collection(AppConstants.quizAttemptsCollection)
+          .doc(attemptId)
+          .get();
+      if (!attemptDoc.exists) {
+        throw 'Quiz attempt not found';
+      }
+
+      final attempt = QuizAttemptModel.fromMap(
+        attemptDoc.data()! ,
+        attemptDoc.id,
+      );
+
+      // Update the attempt with answers and score
       await _firestore
           .collection(AppConstants.quizAttemptsCollection)
           .doc(attemptId)
           .update({
-            'answers': answers.map((a) => a.toMap()).toList(),
-            'score': score,
-            'totalQuestions': totalQuestions,
-            'submittedAt': FieldValue.serverTimestamp(),
-            'isCompleted': true,
-          });
+        'answers': answers.map((a) => a.toMap()).toList(),
+        'score': score,
+        'totalQuestions': totalQuestions,
+        'submittedAt': FieldValue. serverTimestamp(),
+        'isCompleted': true,
+      });
+
+      print('Quiz submitted: attemptId=$attemptId, score=$score/$totalQuestions');
+
+      final quizDoc = await _firestore
+          . collection(AppConstants.quizzesCollection)
+          .doc(attempt.quizId)
+          .get();
+
+      if (quizDoc.exists) {
+        final quiz = QuizModel.fromMap(quizDoc.data()!, quizDoc.id);
+        
+        print('Sending quiz notifications to student: ${attempt.studentId}');
+        
+        // Send submission confirmation notification
+        await notifyQuizSubmitted(
+          attempt. studentId,
+          quiz,
+          score,
+          totalQuestions,
+        );
+
+        // Send graded notification (quizzes are auto-graded)
+        await notifyQuizGraded(
+          attempt.studentId,
+          quiz,
+          score,
+          totalQuestions,
+        );
+        
+        print('Quiz notifications sent successfully');
+      } else {
+        print('Quiz not found for notifications (quizId: ${attempt.quizId})');
+      }
     } catch (e) {
       print('Submit quiz attempt error: $e');
       rethrow;
@@ -1764,7 +1913,7 @@ class DatabaseService {
       final key = attachmentIndex.toString().trim();
 
       print(
-        '🔽 Tracking download: announcement=$announcementId, index=$attachmentIndex, key="$key", user=$userId',
+        'Tracking download: announcement=$announcementId, index=$attachmentIndex, key="$key", user=$userId',
       );
 
       await _firestore
@@ -2255,7 +2404,7 @@ class DatabaseService {
     /// Get all students enrolled in instructor's courses
   Future<List<UserModel>> getStudentsForInstructor(String instructorId) async {
     try {
-      print('🔍 Getting students for instructor: $instructorId');
+      print('Getting students for instructor: $instructorId');
       
       // Get instructor's courses
       final coursesSnapshot = await _firestore
@@ -2365,6 +2514,252 @@ class DatabaseService {
     } catch (e) {
       print('Get instructors for student error: $e');
       return [];
+    }
+  }
+    // ==================== NOTIFICATION OPERATIONS ====================
+
+  // Create notification
+  Future<String> createNotification(NotificationModel notification) async {
+    try {
+      final docRef = await _firestore
+          .collection(AppConstants.notificationsCollection)
+          .add(notification.toMap());
+      
+      print('Notification created: ${notification.title}');
+      return docRef.id;
+    } catch (e) {
+      print('Create notification error: $e');
+      rethrow;
+    }
+  }
+
+  // Get notifications for user (Stream)
+  Stream<List<NotificationModel>> getNotifications(String userId) {
+    return _firestore
+        .collection(AppConstants.notificationsCollection)
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        . limit(50) // Last 50 notifications
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+            . toList());
+  }
+
+  // Get unread notification count
+  Stream<int> getUnreadNotificationCount(String userId) {
+    return _firestore
+        .collection(AppConstants.notificationsCollection)
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs. length);
+  }
+
+  // Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      await _firestore
+          . collection(AppConstants.notificationsCollection)
+          .doc(notificationId)
+          .update({'isRead': true});
+    } catch (e) {
+      print('Mark notification as read error: $e');
+      rethrow;
+    }
+  }
+
+  // Mark all notifications as read
+  Future<void> markAllNotificationsAsRead(String userId) async {
+    try {
+      final unreadNotifications = await _firestore
+          .collection(AppConstants.notificationsCollection)
+          .where('userId', isEqualTo: userId)
+          . where('isRead', isEqualTo: false)
+          .get();
+
+      final batch = _firestore.batch();
+
+      for (var doc in unreadNotifications.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+
+      await batch.commit();
+      print('Marked ${unreadNotifications.docs.length} notifications as read');
+    } catch (e) {
+      print('Mark all notifications as read error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete notification
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _firestore
+          .collection(AppConstants.notificationsCollection)
+          . doc(notificationId)
+          . delete();
+    } catch (e) {
+      print('Delete notification error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete all read notifications
+  Future<void> deleteReadNotifications(String userId) async {
+    try {
+      final readNotifications = await _firestore
+          .collection(AppConstants.notificationsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('isRead', isEqualTo: true)
+          .get();
+
+      final batch = _firestore.batch();
+
+      for (var doc in readNotifications.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+      print('Deleted ${readNotifications.docs.length} read notifications');
+    } catch (e) {
+      print('Delete read notifications error: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== NOTIFICATION TRIGGERS ====================
+
+  // Notify students when new announcement is created
+  Future<void> notifyAnnouncementCreated(
+    AnnouncementModel announcement,
+    List<String> studentIds,
+  ) async {
+    try {
+      final batch = _firestore.batch();
+      final now = DateTime.now();
+
+      for (final studentId in studentIds) {
+        final notification = NotificationModel(
+          id: '',
+          userId: studentId,
+          type: NotificationType.announcement,
+          title: '📢 New Announcement',
+          message: announcement.title,
+          createdAt: now,
+          relatedId: announcement.id,
+          relatedType: 'announcement',
+        );
+
+        final docRef = _firestore
+            .collection(AppConstants.notificationsCollection)
+            .doc();
+        
+        batch.set(docRef, notification.toMap());
+      }
+
+      await batch.commit();
+      print('Notified ${studentIds.length} students about announcement');
+    } catch (e) {
+      print('Notify announcement error: $e');
+    }
+  }
+
+  // Notify student when assignment is graded
+  Future<void> notifyAssignmentGraded(
+    String studentId,
+    AssignmentModel assignment,
+    int score,
+  ) async {
+    try {
+      final notification = NotificationModel(
+        id: '',
+        userId: studentId,
+        type: NotificationType.assignmentGraded,
+        title: 'Assignment Graded',
+        message: '${assignment.title} - Score: $score/${assignment.maxScore}',
+        createdAt: DateTime.now(),
+        relatedId: assignment.id,
+        relatedType: 'assignment',
+      );
+
+      await createNotification(notification);
+    } catch (e) {
+      print('Notify assignment graded error: $e');
+    }
+  }
+
+  // Notify student when quiz is graded
+  Future<void> notifyQuizGraded(
+    String studentId,
+    QuizModel quiz,
+    int score,
+    int totalQuestions,
+  ) async {
+    try {
+      final notification = NotificationModel(
+        id: '',
+        userId: studentId,
+        type: NotificationType.quizGraded,
+        title: 'Quiz Graded',
+        message: '${quiz.title} - Score: $score/$totalQuestions',
+        createdAt: DateTime.now(),
+        relatedId: quiz.id,
+        relatedType: 'quiz',
+      );
+
+      await createNotification(notification);
+    } catch (e) {
+      print('Notify quiz graded error: $e');
+    }
+  }
+
+  // Notify student when assignment is submitted
+  Future<void> notifyAssignmentSubmitted(
+    String studentId,
+    AssignmentModel assignment,
+    int attemptNumber,
+  ) async {
+    try {
+      final notification = NotificationModel(
+        id: '',
+        userId: studentId,
+        type: NotificationType.assignmentSubmitted,
+        title: 'Assignment Submitted',
+        message: '${assignment.title} - Attempt #$attemptNumber submitted successfully',
+        createdAt: DateTime.now(),
+        relatedId: assignment.id,
+        relatedType: 'assignment',
+      );
+
+      await createNotification(notification);
+    } catch (e) {
+      print('Notify assignment submitted error: $e');
+    }
+  }
+
+  // Notify student when quiz is submitted
+  Future<void> notifyQuizSubmitted(
+    String studentId,
+    QuizModel quiz,
+    int score,
+    int totalQuestions,
+  ) async {
+    try {
+      final notification = NotificationModel(
+        id: '',
+        userId: studentId,
+        type: NotificationType.quizSubmitted,
+        title: 'Quiz Submitted',
+        message: '${quiz.title} - Score: $score/$totalQuestions',
+        createdAt: DateTime.now(),
+        relatedId: quiz.id,
+        relatedType: 'quiz',
+      );
+
+      await createNotification(notification);
+    } catch (e) {
+      print('Notify quiz submitted error: $e');
     }
   }
 }

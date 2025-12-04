@@ -54,8 +54,6 @@ class _StudentImportScreenState extends State<StudentImportScreen> {
       if (rows.isEmpty) {
         throw 'CSV file is empty';
       }
-
-      // Skip header row if it exists
       int startRow = 0;
       if (rows[0].length >= 3 &&
           rows[0][0].toString().toLowerCase().contains('email')) {

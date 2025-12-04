@@ -21,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill admin credentials for testing
     _emailController.text = 'admin';
     _passwordController.text = 'admin';
   }
@@ -59,13 +58,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (success && authProvider.user != null) {
         print('Initializing semester provider...');
-        
-        // Initialize semester provider after successful login
         try {
           await semesterProvider.initialize();
         } catch (e) {
           print('Semester initialization error (non-critical): $e');
-          // Continue even if semester initialization fails
         }
         
         if (!mounted) return;
