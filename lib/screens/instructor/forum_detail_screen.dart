@@ -83,7 +83,7 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
     final forumProvider = Provider.of<ForumProvider>(context, listen: false);
 
     try {
-      // Upload attachments (only for top-level replies)
+      // Upload attachments
       List<String> attachmentUrls = [];
       List<String> attachmentNames = [];
 

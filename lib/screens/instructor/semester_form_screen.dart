@@ -4,7 +4,7 @@ import '../../providers/semester_provider.dart';
 import '../../models/semester_model.dart';
 
 class SemesterFormScreen extends StatefulWidget {
-  final SemesterModel? semester; // null for create, non-null for edit
+  final SemesterModel? semester;
 
   const SemesterFormScreen({super.key, this.semester});
 

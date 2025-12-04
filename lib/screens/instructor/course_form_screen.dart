@@ -56,7 +56,6 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
 
     try {
       if (isEditing) {
-        // ✅ FIXED: Preserve instructorId when updating
         await courseProvider.updateCourse(
           widget.course! .copyWith(
             code: _codeController.text. trim(),
@@ -65,12 +64,11 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                 ? null
                 : _descriptionController.text.trim(),
             sessions: _sessions,
-            instructorId: widget.course!.instructorId, // ← ADD THIS to preserve instructorId
-            updatedAt: DateTime.now(), // ← ADD THIS to track when updated
+            instructorId: widget.course!.instructorId,
+            updatedAt: DateTime.now(),
           ),
         );
       } else {
-        // ✅ Creating new course - already correct
         final newCourse = CourseModel(
           id: '',
           code: _codeController.text.trim(),

@@ -13,7 +13,7 @@ class AnnouncementFormScreen extends StatefulWidget {
 
   const AnnouncementFormScreen({
     super.key,
-    required this.courseId,
+    required this. courseId,
     this.announcement,
   });
 
@@ -46,7 +46,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
     });
 
     if (isEditing) {
-      _titleController.text = widget.announcement! .title;
+      _titleController.text = widget. announcement! .title;
       _contentController.text = widget.announcement!. content;
       _selectedGroupIds = List.from(widget.announcement!. groupIds);
       _existingAttachmentUrls = List.from(widget.announcement!. attachmentUrls);
@@ -58,12 +58,12 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
-    super. dispose();
+    super.dispose();
   }
 
   Future<void> _pickFiles() async {
     try {
-      FilePickerResult?  result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
         allowMultiple: true,
       );
@@ -76,9 +76,9 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
 
         if (totalSizeMB > maxSizeMB) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context). showSnackBar(
               SnackBar(
-                content: Text('Total file size too large (${totalSizeMB.toStringAsFixed(1)} MB).  Maximum is $maxSizeMB MB.'),
+                content: Text('Total file size too large (${totalSizeMB.toStringAsFixed(1)} MB).  Maximum is $maxSizeMB MB. '),
                 backgroundColor: Colors.red,
               ),
             );
@@ -110,6 +110,46 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
       _existingAttachmentUrls.removeAt(index);
       _existingAttachmentNames.removeAt(index);
     });
+  }
+
+  Future<void> _sendNotificationsToStudents(AnnouncementModel announcement) async {
+    try {
+      print('Sending notifications for announcement: ${announcement.title}');
+      
+      // Get students from groups
+      List<String> studentIds = [];
+      
+      if (announcement.groupIds.isEmpty) {
+        // All students in course
+        print('  → Sending to all students in course');
+        final groups = await _databaseService.getGroupsByCourseAsync(widget.courseId);
+        for (var group in groups) {
+          studentIds.addAll(group.studentIds);
+        }
+      } else {
+        // Specific groups
+        print('  → Sending to ${announcement.groupIds.length} specific groups');
+        for (var groupId in announcement.groupIds) {
+          final group = await _databaseService.getGroupById(groupId);
+          if (group != null) {
+            studentIds.addAll(group.studentIds);
+          }
+        }
+      }
+
+      // Remove duplicates
+      studentIds = studentIds.toSet(). toList();
+
+      // Send notifications
+      if (studentIds.isNotEmpty) {
+        await _databaseService.notifyAnnouncementCreated(announcement, studentIds);
+        print('Sent notifications to ${studentIds.length} students');
+      } else {
+        print('No students to notify');
+      }
+    } catch (e) {
+      print('Error sending notifications: $e');
+    }
   }
 
   Future<void> _save() async {
@@ -148,7 +188,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
 
       if (isEditing) {
         await announcementProvider.updateAnnouncement(
-          widget.announcement! .copyWith(
+          widget.announcement!.copyWith(
             title: _titleController.text. trim(),
             content: _contentController.text.trim(),
             groupIds: _selectedGroupIds,
@@ -169,19 +209,32 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
           createdAt: DateTime.now(),
         );
 
-        await announcementProvider.createAnnouncement(newAnnouncement);
+        // Create announcement first to get the ID
+        final announcementId = await announcementProvider.createAnnouncement(newAnnouncement);
+        
+        // Send notifications (don't await - run in background)
+        if (mounted) {
+          _sendNotificationsToStudents(
+            newAnnouncement. copyWith(id: announcementId),
+          );
+        }
       }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isEditing ? 'Announcement updated' : 'Announcement published')),
+          SnackBar(
+            content: Text(isEditing 
+              ? 'Announcement updated' 
+              : 'Announcement published & notifications sent'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors. red),
         );
       }
     } finally {
@@ -203,7 +256,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets. all(16),
+          padding: const EdgeInsets.all(16),
           children: [
             // Title
             TextFormField(
@@ -212,7 +265,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                 labelText: 'Title *',
                 hintText: 'e.g., Important: Midterm Schedule',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons. title),
+                prefixIcon: Icon(Icons.title),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -256,7 +309,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                       children: [
                         Icon(Icons.attach_file, color: Colors.blue),
                         SizedBox(width: 8),
-                        Text('Attachments', style: TextStyle(fontSize: 16, fontWeight: FontWeight. bold)),
+                        Text('Attachments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -280,7 +333,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                               Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 14))),
                               IconButton(
                                 icon: const Icon(Icons.close, size: 20, color: Colors.red),
-                                onPressed: () => _removeExistingAttachment(entry. key),
+                                onPressed: () => _removeExistingAttachment(entry.key),
                               ),
                             ],
                           ),
@@ -330,7 +383,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                     ],
 
                     OutlinedButton.icon(
-                      onPressed: _isSaving ?  null : _pickFiles,
+                      onPressed: _isSaving ? null : _pickFiles,
                       icon: const Icon(Icons.add),
                       label: const Text('Add Files'),
                     ),
@@ -343,7 +396,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
             // Groups
             Consumer<GroupProvider>(
               builder: (context, groupProvider, child) {
-                final groups = groupProvider.groups;
+                final groups = groupProvider. groups;
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -352,7 +405,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.group, color: Colors.deepPurple),
+                            Icon(Icons.group, color: Colors. deepPurple),
                             SizedBox(width: 8),
                             Text('Target Audience', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           ],
@@ -361,19 +414,19 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                         const Text('Leave empty to send to all students', style: TextStyle(fontSize: 12, color: Colors.grey)),
                         const SizedBox(height: 12),
                         if (groups.isEmpty)
-                          const Text('No groups available', style: TextStyle(color: Colors.grey))
+                          const Text('No groups available', style: TextStyle(color: Colors. grey))
                         else
                           Wrap(
                             spacing: 8,
                             children: groups.map((group) {
-                              final isSelected = _selectedGroupIds. contains(group.id);
+                              final isSelected = _selectedGroupIds.contains(group. id);
                               return FilterChip(
                                 label: Text(group.name),
                                 selected: isSelected,
                                 onSelected: (selected) {
                                   setState(() {
                                     if (selected) {
-                                      _selectedGroupIds.add(group. id);
+                                      _selectedGroupIds. add(group.id);
                                     } else {
                                       _selectedGroupIds.remove(group.id);
                                     }
@@ -414,11 +467,11 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : Text(
                       isEditing ? 'UPDATE ANNOUNCEMENT' : 'PUBLISH ANNOUNCEMENT',
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
                     ),
             ),
           ],

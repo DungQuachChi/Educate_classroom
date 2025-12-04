@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../models/course_model.dart';
 import '../../services/database_service.dart';
 import '../auth/login_screen.dart';
 import 'student_course_screen.dart';
 import 'student_announcement_screen.dart';
-import 'student_message_list_screen.dart'; // ← Add this import
+import 'student_message_list_screen.dart';
+import 'notification_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -76,7 +78,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: Colors.deepPurple.shade100,
-                    borderRadius: BorderRadius. circular(8),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.school, color: Colors.deepPurple),
                 ),
@@ -91,7 +93,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
 
     if (selectedCourse != null && context.mounted) {
-      Navigator. push(
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => StudentAnnouncementScreen(course: selectedCourse),
@@ -103,11 +105,60 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final notificationProvider = Provider.of<NotificationProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Courses'),
         actions: [
+          //NOTIFICATION BELL
+          StreamBuilder<int>(
+            stream: notificationProvider.getUnreadCountStream(authProvider.user?. uid ??  ''),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ??  0;
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -163,7 +214,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           'ID: ${authProvider.user! .studentId}',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors. white70,
+                            color: Colors.white70,
                           ),
                         ),
                       ],
@@ -173,7 +224,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
                 // Quick Actions
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets. all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -190,9 +241,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
-                            // Messages - Always available
+                            // Messages
                             _QuickActionCard(
-                              icon: Icons. message,
+                              icon: Icons.message,
                               label: 'Messages',
                               color: Colors.teal,
                               onTap: () {
@@ -205,7 +256,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               },
                             ),
                             const SizedBox(width: 12),
-                            
                             // Announcements
                             _QuickActionCard(
                               icon: Icons.campaign,
@@ -217,7 +267,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             
                             // Assignments
                             _QuickActionCard(
-                              icon: Icons. assignment,
+                              icon: Icons.assignment,
                               label: 'Assignments',
                               color: Colors.green,
                               onTap: () {
@@ -274,7 +324,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
                 // Courses Section
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  padding: const EdgeInsets. fromLTRB(16, 0, 16, 16),
                   child: Text(
                     'My Courses (${_courses.length})',
                     style: const TextStyle(
@@ -308,7 +358,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 'You will see courses when assigned to a group',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors. grey,
+                                  color: Colors.grey,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -366,7 +416,7 @@ class _CourseCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Colors. blue.shade400, Colors.blue.shade600],
+                    colors: [Colors.blue.shade400, Colors. blue.shade600],
                   ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
@@ -375,7 +425,7 @@ class _CourseCard extends StatelessWidget {
                 child: course.coverImage != null
                     ? ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(12),
+                          top: Radius. circular(12),
                         ),
                         child: Image.network(
                           course.coverImage!,
@@ -386,13 +436,13 @@ class _CourseCard extends StatelessWidget {
                             child: Icon(
                               Icons.book,
                               size: 50,
-                              color: Colors.white,
+                              color: Colors. white,
                             ),
                           ),
                         ),
                       )
                     : const Center(
-                        child: Icon(Icons. book, size: 50, color: Colors.white),
+                        child: Icon(Icons.book, size: 50, color: Colors.white),
                       ),
               ),
             ),
@@ -404,7 +454,7 @@ class _CourseCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    course.code,
+                    course. code,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -413,7 +463,7 @@ class _CourseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    course.name,
+                    course. name,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -431,18 +481,20 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
-// Quick Action Card Widget
+// Quick Action Card Widget - UPDATED with badge support
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final int? badge;
 
   const _QuickActionCard({
     required this.icon,
-    required this. label,
-    required this. color,
+    required this.label,
+    required this.color,
     required this.onTap,
+    this.badge,
   });
 
   @override
@@ -457,14 +509,44 @@ class _QuickActionCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color. withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 24),
+                  ),
+                  if (badge != null && badge! > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          badge!  > 99 ? '99+' : '$badge',
+                          style: const TextStyle(
+                            color: Colors. white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 12),
               Expanded(
