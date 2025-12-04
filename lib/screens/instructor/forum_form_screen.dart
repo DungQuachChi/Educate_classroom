@@ -9,7 +9,7 @@ import '../../providers/forum_provider.dart';
 
 class ForumFormScreen extends StatefulWidget {
   final CourseModel course;
-  final ForumModel?  forum; // null = create new, non-null = edit
+  final ForumModel?  forum;
 
   const ForumFormScreen({
     super.key,

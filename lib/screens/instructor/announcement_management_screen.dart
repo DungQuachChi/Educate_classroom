@@ -103,7 +103,6 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
               ),
 
               // Announcements List
-              // Announcements List
               Expanded(
                 child: _selectedCourse == null
                     ? const Center(child: Text('Please select a course'))

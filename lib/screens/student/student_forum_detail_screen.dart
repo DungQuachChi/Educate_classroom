@@ -522,7 +522,6 @@ class _ReplyCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Reply Header
-            // Reply Header
             FutureBuilder<UserModel?>(
               future: databaseService.getUserById(reply.createdBy),
               builder: (context, userSnapshot) {

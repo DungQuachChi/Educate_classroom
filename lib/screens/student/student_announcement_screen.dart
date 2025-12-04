@@ -440,7 +440,7 @@ class _StudentAnnouncementDetailScreenState
                                   title: Text(name),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.download, color: Colors.blue),
-                                    onPressed: () => _downloadAttachment(index, url, name), // ← Pass index
+                                    onPressed: () => _downloadAttachment(index, url, name),
                                   ),
                                 ),
                               );

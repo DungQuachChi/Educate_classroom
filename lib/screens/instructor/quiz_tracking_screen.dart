@@ -24,7 +24,7 @@ class _QuizTrackingScreenState extends State<QuizTrackingScreen> {
   Map<String, List<QuizAttemptModel>> _attemptsByStudent = {};
   bool _isLoading = true;
   String _searchQuery = '';
-  String _filterStatus = 'all'; // all, completed, not_completed
+  String _filterStatus = 'all'; 
 
   @override
   void initState() {

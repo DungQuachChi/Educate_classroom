@@ -100,8 +100,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               snapshot.data!.data() as Map<String, dynamic>,
               snapshot.data!.id,
             );
-            
-            // DEBUG: Print the fresh data
+
             print('🔄 Direct stream update for announcement: ${currentAnnouncement.id}');
             print('   Downloaded by data: ${currentAnnouncement.downloadedBy}');
           }
@@ -467,22 +466,22 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
       listen: false,
     );
 
-    print('🔽 Starting download: index=$index, file=$fileName');
-    print('📄 Announcement ID: ${widget.announcement.id}');
-    print('👤 User ID: ${authProvider.user?.uid}');
+    print('Starting download: index=$index, file=$fileName');
+    print('Announcement ID: ${widget.announcement.id}');
+    print('User ID: ${authProvider.user?.uid}');
 
     try {
       // Track download
       if (authProvider.user != null) {
-        print('📊 Calling trackDownload...');
+        print('Calling trackDownload...');
         await announcementProvider.trackDownload(
           widget.announcement.id,
           index,
           authProvider.user!.uid,
         );
-        print('✅ trackDownload completed');
+        print('trackDownload completed');
       } else {
-        print('❌ No user logged in! ');
+        print('No user logged in! ');
       }
 
       // Open/download file
@@ -497,7 +496,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         );
       }
     } catch (e) {
-      print('❌ Download error: $e');
+      print('Download error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -546,12 +545,12 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }
 
   void _showDownloaders(int index, String fileName) {
-    print('👥 Showing downloaders for index: $index');
-    print('📊 All downloaders data: $_downloaders');
+    print('Showing downloaders for index: $index');
+    print('All downloaders data: $_downloaders');
 
     final downloaders = _downloaders[index.toString()] ?? [];
 
-    print('📋 Downloaders for index $index: ${downloaders.length} users');
+    print('Downloaders for index $index: ${downloaders.length} users');
     if (downloaders.isNotEmpty) {
       for (var user in downloaders) {
         print('  - ${user.displayName} (${user.email})');
