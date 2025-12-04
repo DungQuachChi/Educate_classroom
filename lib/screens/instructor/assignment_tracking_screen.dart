@@ -25,8 +25,8 @@ class _AssignmentTrackingScreenState extends State<AssignmentTrackingScreen> {
   List<SubmissionTrackingModel> _filteredData = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  String _filterStatus = 'all'; // all, submitted, not_submitted, graded, late
-  String _sortBy = 'name'; // name, status, attempts, score, time
+  String _filterStatus = 'all';
+  String _sortBy = 'name';
   bool _sortAscending = true;
 
   @override
@@ -608,45 +608,44 @@ class _SubmissionAttemptCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Content
-// Attachments (around line 650 in the _SubmissionAttemptCard)
-if (submission.attachmentUrls.isNotEmpty) ...[
-  const Text('Attachments:', style: TextStyle(fontWeight: FontWeight.bold)),
-  const SizedBox(height: 4),
-  ...submission.attachmentUrls.map((url) {
-    final fileName = url.split('/').last.split('?').first;
-    final decodedName = Uri.decodeComponent(fileName);
-    
-    return Card(
-      child: ListTile(
-        dense: true,
-        leading: const Icon(Icons.attach_file, size: 20),
-        title: Text(decodedName, style: const TextStyle(fontSize: 14)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.open_in_new, size: 18),
-              onPressed: () {
-                html.window.open(url, '_blank');
-              },
-              tooltip: 'Open',
-            ),
-            IconButton(
-              icon: const Icon(Icons.download, size: 18),
-              onPressed: () {
-                final anchor = html.AnchorElement(href: url)
-                  ..setAttribute('download', decodedName)
-                  ..click();
-              },
-              tooltip: 'Download',
-            ),
-          ],
-        ),
-      ),
-    );
-  }).toList(),
-  const SizedBox(height: 12),
-],
+                if (submission.attachmentUrls.isNotEmpty) ...[
+                  const Text('Attachments:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  ...submission.attachmentUrls.map((url) {
+                    final fileName = url.split('/').last.split('?').first;
+                    final decodedName = Uri.decodeComponent(fileName);
+                    
+                    return Card(
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.attach_file, size: 20),
+                        title: Text(decodedName, style: const TextStyle(fontSize: 14)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              onPressed: () {
+                                html.window.open(url, '_blank');
+                              },
+                              tooltip: 'Open',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.download, size: 18),
+                              onPressed: () {
+                                final anchor = html.AnchorElement(href: url)
+                                  ..setAttribute('download', decodedName)
+                                  ..click();
+                              },
+                              tooltip: 'Download',
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 12),
+                ],
 
                 // Score
                 if (submission.isGraded) ...[

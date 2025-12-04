@@ -68,7 +68,7 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
 
-        // Check file size (max 100 MB)
+        // Check file size
         const maxSizeMB = 100;
         final fileSizeMB = file.size / (1024 * 1024);
 

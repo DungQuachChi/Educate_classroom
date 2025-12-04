@@ -346,7 +346,7 @@ class _StudentChatScreenState extends State<StudentChatScreen> {
   }
 }
 
-// Reuse the same _DateDivider and _MessageBubble widgets from instructor chat_screen. dart
+// Reuse the same _DateDivider and _MessageBubble widgets from instructor chat_screen.dart
 class _DateDivider extends StatelessWidget {
   final DateTime date;
 

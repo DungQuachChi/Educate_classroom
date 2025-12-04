@@ -91,10 +91,10 @@ class _NewInstructorMessageScreenState extends State<NewInstructorMessageScreen>
         const SnackBar(content: Text('Starting conversation.. .')),
       );
 
-      // Get or create conversation (student ID first, instructor ID second)
+      // Get or create conversation
       final conversationId = await messageProvider.getOrCreateConversation(
-        student.uid,  // studentId
-        authProvider.user! .uid,  // instructorId
+        student.uid,  
+        authProvider.user! .uid,  
       );
 
       // Create conversation model
