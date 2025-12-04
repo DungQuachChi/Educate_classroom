@@ -2,7 +2,7 @@ import 'package:educate_classroom/screens/student/student_forum_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import '../../providers/auth_provider.dart';
 import '../../models/course_model.dart';
 import '../../models/assignment_model.dart';

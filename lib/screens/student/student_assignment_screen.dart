@@ -7,7 +7,7 @@ import '../../providers/assignment_provider.dart';
 import '../../models/assignment_model.dart';
 import '../../models/submission_model.dart';
 import '../../services/database_service.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 class StudentAssignmentScreen extends StatefulWidget {
   final AssignmentModel assignment;
