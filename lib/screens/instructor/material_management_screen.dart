@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import '../../providers/material_provider.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/semester_provider.dart';
