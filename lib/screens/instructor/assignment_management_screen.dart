@@ -10,7 +10,12 @@ import 'assignment_form_screen.dart';
 import 'assignment_tracking_screen.dart';
 
 class AssignmentManagementScreen extends StatefulWidget {
-  const AssignmentManagementScreen({super.key});
+  final CourseModel? preselectedCourse; // ← ADD THIS
+
+  const AssignmentManagementScreen({
+    super.key,
+    this.preselectedCourse, // ← ADD THIS
+  });
 
   @override
   State<AssignmentManagementScreen> createState() => _AssignmentManagementScreenState();
@@ -25,9 +30,15 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final assignmentProvider = Provider.of<AssignmentProvider>(context, listen: false);
 
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
+        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!. id);
+      }
+
+      // ← Auto-load assignments if course is preselected
+      if (widget. preselectedCourse != null) {
+        assignmentProvider.loadAssignmentsByCourse(widget.preselectedCourse!.id);
       }
     });
   }
@@ -36,7 +47,9 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Assignment Management'),
+        title: widget.preselectedCourse != null
+            ? Text('Assignments - ${widget.preselectedCourse!.name}') // ← Show course name
+            : const Text('Assignment Management'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, AssignmentProvider>(
         builder: (context, semesterProvider, courseProvider, assignmentProvider, child) {
@@ -63,13 +76,23 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
             );
           }
 
+          // ← If preselected course, skip dropdown
+          if (widget.preselectedCourse != null) {
+            return _buildAssignmentsList(
+              assignmentProvider. assignments,
+              assignmentProvider.isLoading,
+              widget.preselectedCourse! ,
+            );
+          }
+
+          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: Colors.purple.shade50,
+                color: Colors.purple. shade50,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -84,7 +107,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets. symmetric(horizontal: 12, vertical: 8),
                       ),
                       hint: const Text('Choose a course'),
                       items: courses.map((course) {
@@ -92,7 +115,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
                           value: course,
                           child: Text('${course.code} - ${course.name}'),
                         );
-                      }).toList(),
+                      }). toList(),
                       onChanged: (course) {
                         setState(() => _selectedCourse = course);
                         if (course != null) {
@@ -108,21 +131,24 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
               Expanded(
                 child: _selectedCourse == null
                     ? const Center(child: Text('Please select a course'))
-                    : assignmentProvider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildAssignmentsList(assignmentProvider.assignments),
+                    : _buildAssignmentsList(
+                        assignmentProvider.assignments,
+                        assignmentProvider.isLoading,
+                        _selectedCourse!,
+                      ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: _selectedCourse != null
-          ? FloatingActionButton.extended(
+      floatingActionButton: (widget.preselectedCourse != null || _selectedCourse != null)
+          ? FloatingActionButton. extended(
               onPressed: () {
+                final courseId = widget.preselectedCourse?. id ??  _selectedCourse! .id;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AssignmentFormScreen(courseId: _selectedCourse!.id),
+                    builder: (_) => AssignmentFormScreen(courseId: courseId),
                   ),
                 );
               },
@@ -133,7 +159,11 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
     );
   }
 
-  Widget _buildAssignmentsList(List<AssignmentModel> assignments) {
+  Widget _buildAssignmentsList(List<AssignmentModel> assignments, bool isLoading, CourseModel course) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (assignments.isEmpty) {
       return Center(
         child: Column(
@@ -142,6 +172,11 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
             Icon(Icons.assignment, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text('No assignments yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            const Text(
+              'Create assignments for students to submit',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -153,7 +188,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
       itemBuilder: (context, index) {
         return _AssignmentCard(
           assignment: assignments[index],
-          courseId: _selectedCourse!.id,
+          courseId: course.id,
         );
       },
     );
@@ -174,9 +209,9 @@ class _AssignmentCard extends StatelessWidget {
     IconData statusIcon = Icons.check_circle;
     String statusText = assignment.statusText;
 
-    if (assignment.isPastLateDeadline) {
+    if (assignment. isPastLateDeadline) {
       statusColor = Colors.grey;
-      statusIcon = Icons.lock;
+      statusIcon = Icons. lock;
     } else if (assignment.isOverdue) {
       statusColor = Colors.red;
       statusIcon = Icons.warning;
@@ -190,7 +225,7 @@ class _AssignmentCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          Navigator.push(
+          Navigator. push(
             context,
             MaterialPageRoute(
               builder: (_) => AssignmentTrackingScreen(assignment: assignment),
@@ -310,7 +345,7 @@ class _AssignmentCard extends StatelessWidget {
                       Icon(Icons.event, size: 14, color: Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        'Due: ${DateFormat('MMM dd, HH:mm').format(assignment.dueDate)}',
+                        'Due: ${DateFormat('MMM dd, HH:mm').format(assignment. dueDate)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -360,7 +395,7 @@ class _AssignmentCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Assignment'),
-        content: Text('Delete "${assignment.title}"?\n\nAll submissions will be deleted.'),
+        content: Text('Delete "${assignment.title}"?\n\nAll submissions will be deleted. '),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
