@@ -7,11 +7,15 @@ import '../../providers/course_provider.dart';
 import '../../providers/semester_provider.dart';
 import '../../models/group_model.dart';
 import '../../models/course_model.dart';
-import 'group_management_screen.dart';
 import 'group_students_screen.dart';
 
 class GroupManagementScreen extends StatefulWidget {
-  const GroupManagementScreen({super.key});
+  final CourseModel? preselectedCourse;
+
+  const GroupManagementScreen({
+    super.key,
+    this.preselectedCourse,
+  });
 
   @override
   State<GroupManagementScreen> createState() => _GroupManagementScreenState();
@@ -23,16 +27,23 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
   @override
   void initState() {
     super.initState();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
       final studentProvider = Provider.of<StudentProvider>(context, listen: false);
+      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
 
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
+        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!. id);
       }
       
       studentProvider.initialize();
+      
+      // If preselected course exists, just load its groups
+      if (widget.preselectedCourse != null) {
+        groupProvider.loadGroupsByCourse(widget.preselectedCourse!. id);
+      }
     });
   }
 
@@ -40,7 +51,9 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Group Management'),
+        title: widget.preselectedCourse != null
+            ? Text('Groups - ${widget.preselectedCourse!.name}')
+            : const Text('Group Management'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, GroupProvider>(
         builder: (context, semesterProvider, courseProvider, groupProvider, child) {
@@ -71,13 +84,23 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
             );
           }
 
+          // If we have a preselected course, skip the dropdown entirely
+          if (widget.preselectedCourse != null) {
+            return _buildGroupsList(
+              groupProvider. groups,
+              groupProvider.isLoading,
+              widget.preselectedCourse!,
+            );
+          }
+
+          // Otherwise show the course selector
           return Column(
             children: [
               // Course Selector
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: Colors.blue.shade50,
+                color: Colors.blue. shade50,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -85,7 +108,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                       'Select Course',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: Colors. grey[600],
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -95,7 +118,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets. symmetric(horizontal: 12, vertical: 8),
                       ),
                       hint: const Text('Choose a course'),
                       items: courses.map((course) {
@@ -103,7 +126,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                           value: course,
                           child: Text('${course.code} - ${course.name}'),
                         );
-                      }).toList(),
+                      }). toList(),
                       onChanged: (course) {
                         setState(() {
                           _selectedCourse = course;
@@ -123,22 +146,25 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                     ? const Center(
                         child: Text('Please select a course'),
                       )
-                    : groupProvider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildGroupsList(groupProvider.groups),
+                    : _buildGroupsList(
+                        groupProvider.groups,
+                        groupProvider.isLoading,
+                        _selectedCourse!,
+                      ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: _selectedCourse != null
-          ? FloatingActionButton.extended(
+      floatingActionButton: (widget.preselectedCourse != null || _selectedCourse != null)
+          ? FloatingActionButton. extended(
               onPressed: () {
+                final courseId = widget.preselectedCourse?. id ??  _selectedCourse! .id;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => GroupFormScreen(
-                      courseId: _selectedCourse!.id,
+                      courseId: courseId,
                     ),
                   ),
                 );
@@ -150,7 +176,11 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
     );
   }
 
-  Widget _buildGroupsList(List<GroupModel> groups) {
+  Widget _buildGroupsList(List<GroupModel> groups, bool isLoading, CourseModel course) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (groups.isEmpty) {
       return Center(
         child: Column(
@@ -185,7 +215,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
       itemBuilder: (context, index) {
         return _GroupCard(
           group: groups[index],
-          courseId: _selectedCourse!.id,
+          courseId: course.id,
         );
       },
     );
@@ -210,7 +240,7 @@ class _GroupCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          Navigator.push(
+          Navigator. push(
             context,
             MaterialPageRoute(
               builder: (_) => GroupStudentsScreen(group: group),
@@ -231,7 +261,7 @@ class _GroupCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
-                  Icons.group,
+                  Icons. group,
                   color: Colors.blue,
                   size: 28,
                 ),

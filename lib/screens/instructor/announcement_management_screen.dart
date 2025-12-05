@@ -11,7 +11,12 @@ import 'announcement_detail_screen.dart';
 import '../../services/database_service.dart';
 
 class AnnouncementManagementScreen extends StatefulWidget {
-  const AnnouncementManagementScreen({super.key});
+  final CourseModel? preselectedCourse; // ← ADD THIS
+
+  const AnnouncementManagementScreen({
+    super.key,
+    this.preselectedCourse, // ← ADD THIS
+  });
 
   @override
   State<AnnouncementManagementScreen> createState() => _AnnouncementManagementScreenState();
@@ -22,13 +27,13 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
 
   @override
   void initState() {
-    super. initState();
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
 
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider. currentSemester!. id);
+        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
       }
     });
   }
@@ -37,7 +42,9 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Announcements'),
+        title: widget.preselectedCourse != null
+            ? Text('Announcements - ${widget.preselectedCourse!.name}') // ← Show course name
+            : const Text('Announcements'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, AnnouncementProvider>(
         builder: (context, semesterProvider, courseProvider, announcementProvider, child) {
@@ -64,6 +71,12 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
             );
           }
 
+          // ← If preselected course, skip dropdown
+          if (widget.preselectedCourse != null) {
+            return _buildAnnouncementsList(widget.preselectedCourse! );
+          }
+
+          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
@@ -93,9 +106,6 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
                       }). toList(),
                       onChanged: (course) {
                         setState(() => _selectedCourse = course);
-                        if (course != null) {
-                          announcementProvider.loadAnnouncementsByCourse(course.id);
-                        }
                       },
                     ),
                   ],
@@ -106,54 +116,20 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
               Expanded(
                 child: _selectedCourse == null
                     ? const Center(child: Text('Please select a course'))
-                    : StreamBuilder<List<AnnouncementModel>>(
-                        stream: DatabaseService(). getAnnouncementsByCourse(_selectedCourse!.id),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
-
-                          if (! snapshot.hasData || snapshot.data!.isEmpty) {
-                            return Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.campaign, size: 80, color: Colors.grey[400]),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No announcements yet',
-                                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final announcements = snapshot.data!;
-                          return ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: announcements.length,
-                            itemBuilder: (context, index) {
-                              return _AnnouncementCard(
-                                announcement: announcements[index],
-                                courseId: _selectedCourse!. id,
-                              );
-                            },
-                          );
-                        },
-                      ),
+                    : _buildAnnouncementsList(_selectedCourse! ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: _selectedCourse != null
+      floatingActionButton: (widget.preselectedCourse != null || _selectedCourse != null)
           ? FloatingActionButton. extended(
               onPressed: () {
+                final courseId = widget.preselectedCourse?. id ??  _selectedCourse! .id;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AnnouncementFormScreen(courseId: _selectedCourse! .id),
+                    builder: (_) => AnnouncementFormScreen(courseId: courseId),
                   ),
                 );
               },
@@ -164,27 +140,45 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
     );
   }
 
-  Widget _buildAnnouncementsList(List<AnnouncementModel> announcements) {
-    if (announcements.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.campaign, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('No announcements yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
+  Widget _buildAnnouncementsList(CourseModel course) {
+    return StreamBuilder<List<AnnouncementModel>>(
+      stream: DatabaseService().getAnnouncementsByCourse(course.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: announcements.length,
-      itemBuilder: (context, index) {
-        return _AnnouncementCard(
-          announcement: announcements[index],
-          courseId: _selectedCourse!. id,
+        if (! snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.campaign, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No announcements yet',
+                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Post announcements to keep students informed',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final announcements = snapshot.data!;
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: announcements.length,
+          itemBuilder: (context, index) {
+            return _AnnouncementCard(
+              announcement: announcements[index],
+              courseId: course.id,
+            );
+          },
         );
       },
     );
@@ -217,7 +211,7 @@ class _AnnouncementCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment. start,
             children: [
               Row(
                 children: [
@@ -304,7 +298,7 @@ class _AnnouncementCard extends StatelessWidget {
               if (announcement.attachmentUrls.isNotEmpty) ...[
                 Wrap(
                   spacing: 8,
-                  children: announcement.attachmentNames.take(3).map((name) {
+                  children: announcement. attachmentNames.take(3).map((name) {
                     return Chip(
                       avatar: const Icon(Icons.attach_file, size: 16),
                       label: Text(name, style: const TextStyle(fontSize: 12)),
@@ -314,7 +308,7 @@ class _AnnouncementCard extends StatelessWidget {
                 ),
                 if (announcement.attachmentNames.length > 3)
                   Text(
-                    '+${announcement.attachmentNames.length - 3} more',
+                    '+${announcement. attachmentNames.length - 3} more',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 const SizedBox(height: 12),
@@ -333,10 +327,10 @@ class _AnnouncementCard extends StatelessWidget {
                   Icon(Icons. access_time, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
-                    DateFormat('MMM dd, yyyy HH:mm').format(announcement.createdAt),
+                    DateFormat('MMM dd, yyyy HH:mm'). format(announcement.createdAt),
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
-                  if (announcement.groupIds.isEmpty) ...[
+                  if (announcement. groupIds.isEmpty) ...[
                     const SizedBox(width: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
