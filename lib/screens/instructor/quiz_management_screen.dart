@@ -10,11 +10,11 @@ import 'quiz_form_screen.dart';
 import 'quiz_tracking_screen.dart';
 
 class QuizManagementScreen extends StatefulWidget {
-  final CourseModel? preselectedCourse; // ← ADD THIS
+  final CourseModel? preselectedCourse; 
 
   const QuizManagementScreen({
     super.key,
-    this.preselectedCourse, // ← ADD THIS
+    this.preselectedCourse, 
   });
 
   @override
@@ -36,7 +36,6 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
         courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.  id);
       }
 
-      // ← Auto-load quizzes if course is preselected
       if (widget. preselectedCourse != null) {
         quizProvider.loadQuizzesByCourse(widget.preselectedCourse!.id);
       }
@@ -48,7 +47,7 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: widget.preselectedCourse != null
-            ? Text('Quizzes - ${widget.preselectedCourse!.name}') // ← Show course name
+            ? Text('Quizzes - ${widget.preselectedCourse!.name}')
             : const Text('Quiz Management'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, QuizProvider>(
@@ -76,7 +75,6 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
             );
           }
 
-          // ← If preselected course, skip dropdown
           if (widget.preselectedCourse != null) {
             return _buildQuizzesList(
               quizProvider.  quizzes,
@@ -85,7 +83,6 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
             );
           }
 
-          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
