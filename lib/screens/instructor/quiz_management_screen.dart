@@ -10,7 +10,12 @@ import 'quiz_form_screen.dart';
 import 'quiz_tracking_screen.dart';
 
 class QuizManagementScreen extends StatefulWidget {
-  const QuizManagementScreen({super.key});
+  final CourseModel? preselectedCourse; // ← ADD THIS
+
+  const QuizManagementScreen({
+    super.key,
+    this.preselectedCourse, // ← ADD THIS
+  });
 
   @override
   State<QuizManagementScreen> createState() => _QuizManagementScreenState();
@@ -25,9 +30,15 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final quizProvider = Provider.of<QuizProvider>(context, listen: false);
 
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
+        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.  id);
+      }
+
+      // ← Auto-load quizzes if course is preselected
+      if (widget. preselectedCourse != null) {
+        quizProvider.loadQuizzesByCourse(widget.preselectedCourse!.id);
       }
     });
   }
@@ -36,7 +47,9 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz Management'),
+        title: widget.preselectedCourse != null
+            ? Text('Quizzes - ${widget.preselectedCourse!.name}') // ← Show course name
+            : const Text('Quiz Management'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, QuizProvider>(
         builder: (context, semesterProvider, courseProvider, quizProvider, child) {
@@ -63,13 +76,23 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
             );
           }
 
+          // ← If preselected course, skip dropdown
+          if (widget.preselectedCourse != null) {
+            return _buildQuizzesList(
+              quizProvider.  quizzes,
+              quizProvider.isLoadingQuizzes,
+              widget.preselectedCourse!,
+            );
+          }
+
+          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: Colors.indigo.shade50,
+                color: Colors.indigo.  shade50,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -81,7 +104,7 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: EdgeInsets.  symmetric(horizontal: 12, vertical: 8),
                       ),
                       hint: const Text('Choose a course'),
                       items: courses.map((course) {
@@ -89,7 +112,7 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
                           value: course,
                           child: Text('${course.code} - ${course.name}'),
                         );
-                      }).toList(),
+                      }).  toList(),
                       onChanged: (course) {
                         setState(() => _selectedCourse = course);
                         if (course != null) {
@@ -105,21 +128,24 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
               Expanded(
                 child: _selectedCourse == null
                     ? const Center(child: Text('Please select a course'))
-                    : quizProvider.isLoadingQuizzes
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildQuizzesList(quizProvider.quizzes),
+                    : _buildQuizzesList(
+                        quizProvider.quizzes,
+                        quizProvider.isLoadingQuizzes,
+                        _selectedCourse!,
+                      ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: _selectedCourse != null
-          ? FloatingActionButton.extended(
+      floatingActionButton: (widget.preselectedCourse != null || _selectedCourse != null)
+          ? FloatingActionButton. extended(
               onPressed: () {
+                final courseId = widget.preselectedCourse?. id ??  _selectedCourse! .id;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => QuizFormScreen(courseId: _selectedCourse!.id),
+                    builder: (_) => QuizFormScreen(courseId: courseId),
                   ),
                 );
               },
@@ -130,7 +156,11 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
     );
   }
 
-  Widget _buildQuizzesList(List<QuizModel> quizzes) {
+  Widget _buildQuizzesList(List<QuizModel> quizzes, bool isLoading, CourseModel course) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (quizzes.isEmpty) {
       return Center(
         child: Column(
@@ -139,6 +169,11 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
             Icon(Icons.quiz, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text('No quizzes yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            const Text(
+              'Create quizzes to assess student knowledge',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -150,7 +185,7 @@ class _QuizManagementScreenState extends State<QuizManagementScreen> {
       itemBuilder: (context, index) {
         return _QuizCard(
           quiz: quizzes[index],
-          courseId: _selectedCourse!.id,
+          courseId: course.id,
         );
       },
     );
@@ -172,8 +207,8 @@ class _QuizCard extends StatelessWidget {
 
     if (quiz.isOpen) {
       statusColor = Colors.green;
-      statusIcon = Icons.play_circle;
-    } else if (quiz.isUpcoming) {
+      statusIcon = Icons. play_circle;
+    } else if (quiz. isUpcoming) {
       statusColor = Colors.orange;
       statusIcon = Icons.schedule;
     } else if (quiz.isClosed) {
@@ -186,7 +221,7 @@ class _QuizCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          Navigator.push(
+          Navigator. push(
             context,
             MaterialPageRoute(
               builder: (_) => QuizTrackingScreen(quiz: quiz),
@@ -304,18 +339,18 @@ class _QuizCard extends StatelessWidget {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _buildInfoChip(Icons.calendar_today, 'Open: ${DateFormat('MMM dd, HH:mm').format(quiz.openTime)}'),
+                  _buildInfoChip(Icons.calendar_today, 'Open: ${DateFormat('MMM dd, HH:mm').format(quiz. openTime)}'),
                   _buildInfoChip(Icons.event, 'Close: ${DateFormat('MMM dd, HH:mm').format(quiz.closeTime)}'),
-                  _buildInfoChip(Icons.timer, '${quiz.durationMinutes} min'),
-                  _buildInfoChip(Icons.quiz, '${quiz.totalQuestions} questions'),
-                  _buildInfoChip(Icons.repeat, 'Max ${quiz.maxAttempts == 0 ? '∞' : quiz.maxAttempts} attempts'),
+                  _buildInfoChip(Icons.timer, '${quiz. durationMinutes} min'),
+                  _buildInfoChip(Icons. quiz, '${quiz.totalQuestions} questions'),
+                  _buildInfoChip(Icons. repeat, 'Max ${quiz.maxAttempts == 0 ? '∞' : quiz.maxAttempts} attempts'),
                 ],
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Colors. grey[100],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -324,7 +359,7 @@ class _QuizCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     _buildDifficultyBadge('Medium', quiz.structure.mediumCount, Colors.orange),
                     const SizedBox(width: 8),
-                    _buildDifficultyBadge('Hard', quiz.structure.hardCount, Colors.red),
+                    _buildDifficultyBadge('Hard', quiz.structure.hardCount, Colors. red),
                   ],
                 ),
               ),
@@ -356,7 +391,7 @@ class _QuizCard extends StatelessWidget {
       ),
       child: Text(
         '$label: $count',
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight. bold, color: color),
       ),
     );
   }
@@ -366,7 +401,7 @@ class _QuizCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Quiz'),
-        content: Text('Delete "${quiz.title}"?\n\nAll student attempts will be deleted.'),
+        content: Text('Delete "${quiz.title}"?\n\nAll student attempts will be deleted. '),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(

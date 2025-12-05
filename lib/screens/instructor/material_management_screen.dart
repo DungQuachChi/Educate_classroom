@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
 import '../../providers/material_provider.dart';
 import '../../providers/course_provider.dart';
@@ -10,7 +11,12 @@ import '../../models/course_model.dart';
 import 'material_form_screen.dart';
 
 class MaterialManagementScreen extends StatefulWidget {
-  const MaterialManagementScreen({super.key});
+  final CourseModel?  preselectedCourse; // ← ADD THIS
+
+  const MaterialManagementScreen({
+    super.key,
+    this.preselectedCourse, // ← ADD THIS
+  });
 
   @override
   State<MaterialManagementScreen> createState() => _MaterialManagementScreenState();
@@ -25,9 +31,15 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semesterProvider = Provider.of<SemesterProvider>(context, listen: false);
       final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      final materialProvider = Provider.of<MaterialProvider>(context, listen: false);
 
       if (semesterProvider.currentSemester != null) {
-        courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!.id);
+        courseProvider.loadCoursesBySemester(semesterProvider. currentSemester!.id);
+      }
+
+      // ← Auto-load materials if course is preselected
+      if (widget. preselectedCourse != null) {
+        materialProvider.loadMaterialsByCourse(widget.preselectedCourse!.id);
       }
     });
   }
@@ -36,7 +48,9 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Course Materials'),
+        title: widget.preselectedCourse != null
+            ? Text('Materials - ${widget.preselectedCourse!.name}') // ← Show course name
+            : const Text('Course Materials'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, MaterialProvider>(
         builder: (context, semesterProvider, courseProvider, materialProvider, child) {
@@ -63,13 +77,23 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
             );
           }
 
+          // ← If preselected course, skip dropdown
+          if (widget.preselectedCourse != null) {
+            return _buildMaterialsList(
+              materialProvider. materials,
+              materialProvider.isLoading,
+              widget.preselectedCourse!,
+            );
+          }
+
+          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                color: Colors.teal.shade50,
+                color: Colors.teal. shade50,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -89,7 +113,7 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
                           value: course,
                           child: Text('${course.code} - ${course.name}'),
                         );
-                      }).toList(),
+                      }). toList(),
                       onChanged: (course) {
                         setState(() => _selectedCourse = course);
                         if (course != null) {
@@ -104,22 +128,25 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
               // Materials List
               Expanded(
                 child: _selectedCourse == null
-                    ? const Center(child: Text('Please select a course'))
-                    : materialProvider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _buildMaterialsList(materialProvider.materials),
+                    ?  const Center(child: Text('Please select a course'))
+                    : _buildMaterialsList(
+                        materialProvider.materials,
+                        materialProvider.isLoading,
+                        _selectedCourse!,
+                      ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: _selectedCourse != null
+      floatingActionButton: (widget.preselectedCourse != null || _selectedCourse != null)
           ? FloatingActionButton.extended(
               onPressed: () {
+                final courseId = widget.preselectedCourse?. id ?? _selectedCourse! .id;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MaterialFormScreen(courseId: _selectedCourse!.id),
+                    builder: (_) => MaterialFormScreen(courseId: courseId),
                   ),
                 );
               },
@@ -130,7 +157,11 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
     );
   }
 
-  Widget _buildMaterialsList(List<MaterialModel> materials) {
+  Widget _buildMaterialsList(List<MaterialModel> materials, bool isLoading, CourseModel course) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (materials.isEmpty) {
       return Center(
         child: Column(
@@ -139,6 +170,11 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
             Icon(Icons.folder_open, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text('No materials yet', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            const Text(
+              'Upload course materials for students',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -150,7 +186,7 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
       itemBuilder: (context, index) {
         return _MaterialCard(
           material: materials[index],
-          courseId: _selectedCourse!.id,
+          courseId: course.id,
         );
       },
     );
@@ -181,14 +217,14 @@ class _MaterialCard extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              material.fileIcon,
+              material. fileIcon,
               style: const TextStyle(fontSize: 28),
             ),
           ),
         ),
         title: Text(
           material.title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight. bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,10 +253,10 @@ class _MaterialCard extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 const SizedBox(width: 12),
-                Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                Icon(Icons. access_time, size: 14, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  DateFormat('MMM dd, yyyy').format(material.createdAt),
+                  DateFormat('MMM dd, yyyy'). format(material.createdAt),
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
@@ -231,7 +267,9 @@ class _MaterialCard extends StatelessWidget {
           onSelected: (value) async {
             switch (value) {
               case 'download':
-                html.window.open(material.fileUrl, '_blank');
+                if (kIsWeb) {
+                  html.window.open(material.fileUrl, '_blank');
+                }
                 break;
               case 'edit':
                 Navigator.push(
@@ -254,7 +292,7 @@ class _MaterialCard extends StatelessWidget {
               value: 'download',
               child: Row(
                 children: [
-                  Icon(Icons.download, size: 20),
+                  Icon(Icons. download, size: 20),
                   SizedBox(width: 8),
                   Text('Download'),
                 ],
@@ -274,7 +312,7 @@ class _MaterialCard extends StatelessWidget {
               value: 'delete',
               child: Row(
                 children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
+                  Icon(Icons. delete, size: 20, color: Colors.red),
                   SizedBox(width: 8),
                   Text('Delete', style: TextStyle(color: Colors.red)),
                 ],

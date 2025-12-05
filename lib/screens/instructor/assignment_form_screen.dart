@@ -80,7 +80,7 @@ class _AssignmentFormScreenState extends State<AssignmentFormScreen> {
       _lateTime = _dueTime;
     }
   }
-
+  
   @override
   void dispose() {
     _titleController.dispose();

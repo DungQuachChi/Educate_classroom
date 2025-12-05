@@ -25,11 +25,11 @@ class InstructorCourseScreen extends StatelessWidget {
           children: [
             // Course Header
             if (course.coverImage != null)
-              Image. network(
-                course.coverImage!,
+              Image.network(
+                course.coverImage! ,
                 height: 200,
                 width: double.infinity,
-                fit: BoxFit.cover,
+                fit: BoxFit. cover,
                 errorBuilder: (context, error, stackTrace) => _buildDefaultHeader(),
               )
             else
@@ -37,12 +37,12 @@ class InstructorCourseScreen extends StatelessWidget {
 
             // Course Info
             Padding(
-              padding: const EdgeInsets. all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment. start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    course.code,
+                    course. code,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -51,7 +51,7 @@ class InstructorCourseScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    course.name,
+                    course. name,
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -63,7 +63,7 @@ class InstructorCourseScreen extends StatelessWidget {
                       course.description!,
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.grey[700],
+                        color: Colors. grey[700],
                       ),
                     ),
                   ],
@@ -74,7 +74,7 @@ class InstructorCourseScreen extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${course.sessions} sessions',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 14, color: Colors. grey[600]),
                       ),
                       const SizedBox(width: 16),
                       Icon(Icons. calendar_today, size: 18, color: Colors.grey[600]),
@@ -97,9 +97,9 @@ class InstructorCourseScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Groups
+                  // Groups - FIXED: Pass course
                   _CourseActionCard(
-                    icon: Icons. groups,
+                    icon: Icons.groups,
                     title: 'Groups',
                     subtitle: 'Manage student groups',
                     color: Colors.purple,
@@ -107,31 +107,35 @@ class InstructorCourseScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const GroupManagementScreen(),
+                          builder: (_) => GroupManagementScreen(
+                            preselectedCourse: course, // ← Pass the course
+                          ),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Materials
+                  // Materials - FIXED: Pass course
                   _CourseActionCard(
                     icon: Icons.folder,
                     title: 'Materials',
                     subtitle: 'Upload and manage course materials',
                     color: Colors.teal,
                     onTap: () {
-                      Navigator.push(
+                      Navigator. push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const MaterialManagementScreen(),
+                          builder: (_) => MaterialManagementScreen(
+                            preselectedCourse: course, // ← Pass the course
+                          ),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Assignments
+                  // Assignments - FIXED: Pass course
                   _CourseActionCard(
                     icon: Icons.assignment,
                     title: 'Assignments',
@@ -141,16 +145,18 @@ class InstructorCourseScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AssignmentManagementScreen(),
+                          builder: (_) => AssignmentManagementScreen(
+                            preselectedCourse: course, // ← Pass the course
+                          ),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Quizzes
+                  // Quizzes - FIXED: Pass course
                   _CourseActionCard(
-                    icon: Icons. quiz,
+                    icon: Icons.quiz,
                     title: 'Quizzes',
                     subtitle: 'Create and manage quizzes',
                     color: Colors.indigo,
@@ -158,14 +164,16 @@ class InstructorCourseScreen extends StatelessWidget {
                       Navigator. push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const QuizManagementScreen(),
+                          builder: (_) => QuizManagementScreen(
+                            preselectedCourse: course, // ← Pass the course
+                          ),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Announcements
+                  // Announcements - FIXED: Pass course
                   _CourseActionCard(
                     icon: Icons.campaign,
                     title: 'Announcements',
@@ -175,14 +183,16 @@ class InstructorCourseScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AnnouncementManagementScreen(),
+                          builder: (_) => AnnouncementManagementScreen(
+                            preselectedCourse: course, // ← Pass the course
+                          ),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
 
-                  // Forums - Course-specific! 
+                  // Forums - Already has course! 
                   _CourseActionCard(
                     icon: Icons. forum,
                     title: 'Forums',
@@ -215,7 +225,7 @@ class InstructorCourseScreen extends StatelessWidget {
         ),
       ),
       child: const Center(
-        child: Icon(Icons.book, size: 80, color: Colors.white),
+        child: Icon(Icons.book, size: 80, color: Colors. white),
       ),
     );
   }
