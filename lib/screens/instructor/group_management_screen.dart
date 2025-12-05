@@ -40,7 +40,6 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
       
       studentProvider.initialize();
       
-      // If preselected course exists, just load its groups
       if (widget.preselectedCourse != null) {
         groupProvider.loadGroupsByCourse(widget.preselectedCourse!. id);
       }
@@ -84,7 +83,6 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
             );
           }
 
-          // If we have a preselected course, skip the dropdown entirely
           if (widget.preselectedCourse != null) {
             return _buildGroupsList(
               groupProvider. groups,
@@ -93,7 +91,6 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
             );
           }
 
-          // Otherwise show the course selector
           return Column(
             children: [
               // Course Selector

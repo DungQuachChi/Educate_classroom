@@ -11,11 +11,11 @@ import '../../models/course_model.dart';
 import 'material_form_screen.dart';
 
 class MaterialManagementScreen extends StatefulWidget {
-  final CourseModel?  preselectedCourse; // ← ADD THIS
+  final CourseModel?  preselectedCourse; 
 
   const MaterialManagementScreen({
     super.key,
-    this.preselectedCourse, // ← ADD THIS
+    this.preselectedCourse,
   });
 
   @override
@@ -37,7 +37,6 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
         courseProvider.loadCoursesBySemester(semesterProvider. currentSemester!.id);
       }
 
-      // ← Auto-load materials if course is preselected
       if (widget. preselectedCourse != null) {
         materialProvider.loadMaterialsByCourse(widget.preselectedCourse!.id);
       }
@@ -49,7 +48,7 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: widget.preselectedCourse != null
-            ? Text('Materials - ${widget.preselectedCourse!.name}') // ← Show course name
+            ? Text('Materials - ${widget.preselectedCourse!.name}')
             : const Text('Course Materials'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, MaterialProvider>(
@@ -77,7 +76,6 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
             );
           }
 
-          // ← If preselected course, skip dropdown
           if (widget.preselectedCourse != null) {
             return _buildMaterialsList(
               materialProvider. materials,
@@ -85,8 +83,6 @@ class _MaterialManagementScreenState extends State<MaterialManagementScreen> {
               widget.preselectedCourse!,
             );
           }
-
-          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector

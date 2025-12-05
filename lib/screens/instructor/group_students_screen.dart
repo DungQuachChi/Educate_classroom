@@ -17,42 +17,6 @@ class GroupStudentsScreen extends StatefulWidget {
 
 class _GroupStudentsScreenState extends State<GroupStudentsScreen> {
   final DatabaseService _databaseService = DatabaseService();
-  List<UserModel> _groupStudents = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadGroupStudents();
-  }
-
-  Future<void> _loadGroupStudents() async {
-    if (widget.group.studentIds.isEmpty) {
-      setState(() {
-        _groupStudents = [];
-        _isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      final students = await _databaseService.getStudentsByIds(widget.group.studentIds);
-      setState(() {
-        _groupStudents = students;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading students: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,50 +25,82 @@ class _GroupStudentsScreenState extends State<GroupStudentsScreen> {
         title: Text(widget.group.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add),
+            icon: const Icon(Icons. person_add),
             onPressed: () => _showAddStudentDialog(),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _groupStudents.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 80,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No students in this group',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tap + to add students',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
+      body: StreamBuilder<GroupModel? >(
+        stream: _databaseService.getGroupsByCourse(widget.group.courseId)
+            .map((groups) => groups.firstWhere(
+                  (g) => g.id == widget. group.id,
+                  orElse: () => widget.group,
+                )),
+        builder: (context, groupSnapshot) {
+          if (groupSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final currentGroup = groupSnapshot.data ??  widget.group;
+
+          if (currentGroup. studentIds.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.people_outline,
+                    size: 80,
+                    color: Colors. grey[400],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _groupStudents.length,
-                  itemBuilder: (context, index) {
-                    final student = _groupStudents[index];
-                    return _StudentCard(
-                      student: student,
-                      onRemove: () => _removeStudent(student),
-                    );
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No students in this group',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap + to add students',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return FutureBuilder<List<UserModel>>(
+            future: _databaseService.getStudentsByIds(currentGroup.studentIds),
+            builder: (context, studentSnapshot) {
+              if (studentSnapshot.connectionState == ConnectionState. waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (! studentSnapshot.hasData || studentSnapshot.data!.isEmpty) {
+                return const Center(
+                  child: Text('No students found'),
+                );
+              }
+
+              final students = studentSnapshot.data!;
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: students.length,
+                itemBuilder: (context, index) {
+                  final student = students[index];
+                  return _StudentCard(
+                    student: student,
+                    groupId: currentGroup.id,
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -113,51 +109,18 @@ class _GroupStudentsScreenState extends State<GroupStudentsScreen> {
       context: context,
       builder: (context) => _AddStudentDialog(
         group: widget.group,
-        currentStudentIds: widget.group.studentIds,
-        onStudentAdded: () {
-          _loadGroupStudents();
-        },
       ),
     );
-  }
-
-  Future<void> _removeStudent(UserModel student) async {
-    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
-
-    try {
-      await groupProvider.removeStudentFromGroup(widget.group.id, student.uid);
-      
-      setState(() {
-        _groupStudents.removeWhere((s) => s.uid == student.uid);
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${student.displayName} removed from group'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }
 
 class _StudentCard extends StatelessWidget {
   final UserModel student;
-  final VoidCallback onRemove;
+  final String groupId;
 
   const _StudentCard({
     required this.student,
-    required this.onRemove,
+    required this.groupId,
   });
 
   @override
@@ -173,7 +136,7 @@ class _StudentCard extends StatelessWidget {
               : null,
           child: student.avatarUrl == null
               ? Text(
-                  student.displayName[0].toUpperCase(),
+                  student.displayName[0]. toUpperCase(),
                   style: const TextStyle(color: Colors.white),
                 )
               : null,
@@ -182,32 +145,55 @@ class _StudentCard extends StatelessWidget {
         subtitle: Text(student.email),
         trailing: IconButton(
           icon: const Icon(Icons.remove_circle, color: Colors.red),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Remove Student'),
-                content: Text(
-                  'Remove ${student.displayName} from this group?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      onRemove();
-                    },
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('Remove'),
-                  ),
-                ],
-              ),
-            );
-          },
+          onPressed: () => _showRemoveDialog(context, student),
         ),
+      ),
+    );
+  }
+
+  void _showRemoveDialog(BuildContext context, UserModel student) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Student'),
+        content: Text(
+          'Remove ${student.displayName} from this group?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+              
+              try {
+                await groupProvider.removeStudentFromGroup(groupId, student.uid);
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${student.displayName} removed from group'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
       ),
     );
   }
@@ -215,13 +201,9 @@ class _StudentCard extends StatelessWidget {
 
 class _AddStudentDialog extends StatefulWidget {
   final GroupModel group;
-  final List<String> currentStudentIds;
-  final VoidCallback onStudentAdded;
 
   const _AddStudentDialog({
     required this.group,
-    required this.currentStudentIds,
-    required this.onStudentAdded,
   });
 
   @override
@@ -275,50 +257,61 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
             ),
             const SizedBox(height: 16),
 
-            // Student List
+            // Student List with real-time updates
             Expanded(
-              child: Consumer<StudentProvider>(
-                builder: (context, studentProvider, child) {
-                  var students = studentProvider.students
-                      .where((s) => !widget.currentStudentIds.contains(s.uid))
-                      .toList();
+              child: StreamBuilder<GroupModel?>(
+                stream: DatabaseService().getGroupsByCourse(widget.group.courseId)
+                    .map((groups) => groups.firstWhere(
+                          (g) => g.id == widget.group.id,
+                          orElse: () => widget.group,
+                        )),
+                builder: (context, groupSnapshot) {
+                  final currentGroup = groupSnapshot.data ?? widget.group;
+                  
+                  return Consumer<StudentProvider>(
+                    builder: (context, studentProvider, child) {
+                      var students = studentProvider.students
+                          .where((s) => ! currentGroup.studentIds.contains(s.uid))
+                          .toList();
 
-                  if (_searchQuery.isNotEmpty) {
-                    students = students.where((s) {
-                      return s.displayName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          s.email.toLowerCase().contains(_searchQuery.toLowerCase());
-                    }).toList();
-                  }
+                      if (_searchQuery.isNotEmpty) {
+                        students = students.where((s) {
+                          return s.displayName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                              s.email. toLowerCase().contains(_searchQuery.toLowerCase());
+                        }).toList();
+                      }
 
-                  if (students.isEmpty) {
-                    return const Center(
-                      child: Text('No students available'),
-                    );
-                  }
+                      if (students.isEmpty) {
+                        return const Center(
+                          child: Text('No students available'),
+                        );
+                      }
 
-                  return ListView.builder(
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      final student = students[index];
-                      final isSelected = _selectedStudentIds.contains(student.uid);
+                      return ListView.builder(
+                        itemCount: students.length,
+                        itemBuilder: (context, index) {
+                          final student = students[index];
+                          final isSelected = _selectedStudentIds.contains(student.uid);
 
-                      return CheckboxListTile(
-                        value: isSelected,
-                        onChanged: (value) {
-                          setState(() {
-                            if (value == true) {
-                              _selectedStudentIds.add(student.uid);
-                            } else {
-                              _selectedStudentIds.remove(student.uid);
-                            }
-                          });
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (value) {
+                              setState(() {
+                                if (value == true) {
+                                  _selectedStudentIds.add(student.uid);
+                                } else {
+                                  _selectedStudentIds.remove(student.uid);
+                                }
+                              });
+                            },
+                            title: Text(student.displayName),
+                            subtitle: Text(student.email),
+                            secondary: CircleAvatar(
+                              backgroundColor: Colors.blue,
+                              child: Text(student.displayName[0].toUpperCase()),
+                            ),
+                          );
                         },
-                        title: Text(student.displayName),
-                        subtitle: Text(student.email),
-                        secondary: CircleAvatar(
-                          backgroundColor: Colors.blue,
-                          child: Text(student.displayName[0].toUpperCase()),
-                        ),
                       );
                     },
                   );
@@ -331,7 +324,7 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _selectedStudentIds.isEmpty ? null : _addStudents,
+                onPressed: _selectedStudentIds.isEmpty ?  null : _addStudents,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -352,10 +345,8 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
 
     try {
       for (String studentId in _selectedStudentIds) {
-        await groupProvider.addStudentToGroup(widget.group.id, studentId);
+        await groupProvider. addStudentToGroup(widget. group.id, studentId);
       }
-
-      widget.onStudentAdded();
 
       if (mounted) {
         Navigator.pop(context);
@@ -369,7 +360,7 @@ class _AddStudentDialogState extends State<_AddStudentDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger. of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
             backgroundColor: Colors.red,

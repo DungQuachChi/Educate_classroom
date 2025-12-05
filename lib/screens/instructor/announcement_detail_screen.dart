@@ -101,7 +101,7 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
               snapshot.data!.id,
             );
 
-            print('🔄 Direct stream update for announcement: ${currentAnnouncement.id}');
+            print('Direct stream update for announcement: ${currentAnnouncement.id}');
             print('   Downloaded by data: ${currentAnnouncement.downloadedBy}');
           }
 

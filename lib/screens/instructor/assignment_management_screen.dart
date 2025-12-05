@@ -10,11 +10,11 @@ import 'assignment_form_screen.dart';
 import 'assignment_tracking_screen.dart';
 
 class AssignmentManagementScreen extends StatefulWidget {
-  final CourseModel? preselectedCourse; // ← ADD THIS
+  final CourseModel? preselectedCourse;
 
   const AssignmentManagementScreen({
     super.key,
-    this.preselectedCourse, // ← ADD THIS
+    this.preselectedCourse,
   });
 
   @override
@@ -36,7 +36,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
         courseProvider.loadCoursesBySemester(semesterProvider.currentSemester!. id);
       }
 
-      // ← Auto-load assignments if course is preselected
       if (widget. preselectedCourse != null) {
         assignmentProvider.loadAssignmentsByCourse(widget.preselectedCourse!.id);
       }
@@ -48,7 +47,7 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
     return Scaffold(
       appBar: AppBar(
         title: widget.preselectedCourse != null
-            ? Text('Assignments - ${widget.preselectedCourse!.name}') // ← Show course name
+            ? Text('Assignments - ${widget.preselectedCourse!.name}')
             : const Text('Assignment Management'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, AssignmentProvider>(
@@ -75,8 +74,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
               ),
             );
           }
-
-          // ← If preselected course, skip dropdown
           if (widget.preselectedCourse != null) {
             return _buildAssignmentsList(
               assignmentProvider. assignments,
@@ -84,8 +81,6 @@ class _AssignmentManagementScreenState extends State<AssignmentManagementScreen>
               widget.preselectedCourse! ,
             );
           }
-
-          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
