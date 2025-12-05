@@ -212,7 +212,7 @@ class _AnnouncementFormScreenState extends State<AnnouncementFormScreen> {
         // Create announcement first to get the ID
         final announcementId = await announcementProvider.createAnnouncement(newAnnouncement);
         
-        // Send notifications (don't await - run in background)
+        // Send notifications
         if (mounted) {
           _sendNotificationsToStudents(
             newAnnouncement. copyWith(id: announcementId),

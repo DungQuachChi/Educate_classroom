@@ -16,7 +16,8 @@ class QuizProvider with ChangeNotifier {
   List<QuizModel> _quizzes = [];
   bool _isLoadingQuizzes = false;
 
-  String? _currentCourseId;
+  String?  _currentQuestionCourseId; // ← CHANGED: Separate tracking for questions
+  String? _currentQuizCourseId;     // ← CHANGED: Separate tracking for quizzes
   StreamSubscription? _questionSubscription;
   StreamSubscription? _quizSubscription;
 
@@ -28,9 +29,10 @@ class QuizProvider with ChangeNotifier {
   // ==================== QUESTION BANK ====================
 
   void loadQuestionsByCourse(String courseId) {
-    if (_currentCourseId == courseId && _questionSubscription != null) return;
+    // ← FIXED: Check against question-specific course ID
+    if (_currentQuestionCourseId == courseId && _questionSubscription != null) return;
     
-    _currentCourseId = courseId;
+    _currentQuestionCourseId = courseId;
     _isLoadingQuestions = true;
     
     _questionSubscription?.cancel();
@@ -47,6 +49,12 @@ class QuizProvider with ChangeNotifier {
     });
   }
 
+  // ← ADD THIS: Force reload questions (useful when switching courses)
+  void forceReloadQuestions(String courseId) {
+    _currentQuestionCourseId = null; // Clear cache
+    loadQuestionsByCourse(courseId);
+  }
+
   Future<String> createQuestion(QuestionModel question) async {
     try {
       return await _databaseService.createQuestion(question);
@@ -57,7 +65,7 @@ class QuizProvider with ChangeNotifier {
 
   Future<void> updateQuestion(QuestionModel question) async {
     try {
-      await _databaseService.updateQuestion(question);
+      await _databaseService. updateQuestion(question);
     } catch (e) {
       rethrow;
     }
@@ -74,9 +82,10 @@ class QuizProvider with ChangeNotifier {
   // ==================== QUIZ ====================
 
   void loadQuizzesByCourse(String courseId) {
-    if (_currentCourseId == courseId && _quizSubscription != null) return;
+    // ← FIXED: Check against quiz-specific course ID
+    if (_currentQuizCourseId == courseId && _quizSubscription != null) return;
     
-    _currentCourseId = courseId;
+    _currentQuizCourseId = courseId;
     _isLoadingQuizzes = true;
     
     _quizSubscription?.cancel();
@@ -186,7 +195,8 @@ class QuizProvider with ChangeNotifier {
   void clear() {
     _questions = [];
     _quizzes = [];
-    _currentCourseId = null;
+    _currentQuestionCourseId = null; // ← CHANGED
+    _currentQuizCourseId = null;     // ← CHANGED
     _questionSubscription?.cancel();
     _quizSubscription?.cancel();
     notifyListeners();
@@ -194,8 +204,8 @@ class QuizProvider with ChangeNotifier {
 
   @override
   void dispose() {
-    _questionSubscription?.cancel();
+    _questionSubscription?. cancel();
     _quizSubscription?.cancel();
-    super.dispose();
+    super. dispose();
   }
 }

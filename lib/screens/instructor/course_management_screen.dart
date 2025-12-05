@@ -7,7 +7,6 @@ import '../../providers/semester_provider.dart';
 import '../../models/course_model.dart';
 import 'course_form_screen.dart';
 
-// ==================== MAIN SCREEN CLASS ====================
 class CourseManagementScreen extends StatefulWidget {
   const CourseManagementScreen({super.key});
 
@@ -131,7 +130,6 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   }
 }
 
-// ==================== COURSE CARD CLASS ====================
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
 
@@ -159,7 +157,6 @@ class _CourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Cover Image (if exists)
             if (course.coverImage != null)
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),

@@ -11,11 +11,11 @@ import 'announcement_detail_screen.dart';
 import '../../services/database_service.dart';
 
 class AnnouncementManagementScreen extends StatefulWidget {
-  final CourseModel? preselectedCourse; // ← ADD THIS
+  final CourseModel? preselectedCourse;
 
   const AnnouncementManagementScreen({
     super.key,
-    this.preselectedCourse, // ← ADD THIS
+    this.preselectedCourse,
   });
 
   @override
@@ -43,7 +43,7 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
     return Scaffold(
       appBar: AppBar(
         title: widget.preselectedCourse != null
-            ? Text('Announcements - ${widget.preselectedCourse!.name}') // ← Show course name
+            ? Text('Announcements - ${widget.preselectedCourse!.name}')
             : const Text('Announcements'),
       ),
       body: Consumer3<SemesterProvider, CourseProvider, AnnouncementProvider>(
@@ -71,12 +71,10 @@ class _AnnouncementManagementScreenState extends State<AnnouncementManagementScr
             );
           }
 
-          // ← If preselected course, skip dropdown
           if (widget.preselectedCourse != null) {
             return _buildAnnouncementsList(widget.preselectedCourse! );
           }
 
-          // Otherwise show course selector
           return Column(
             children: [
               // Course Selector
