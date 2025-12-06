@@ -229,11 +229,34 @@ Future<void> _save() async {
     return;
   }
 
+<<<<<<< HEAD
   if (hardCount > availableHard) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           'Not enough hard questions (available: $availableHard)',
+=======
+    // ← CHANGED: Get available counts from provider
+    final quizProvider = Provider.of<QuizProvider>(context, listen: false);
+    final questions = quizProvider.questions;
+    final availableEasy = questions
+        .where((q) => q.difficulty == QuestionDifficulty.easy)
+        .length;
+    final availableMedium = questions
+        .where((q) => q.difficulty == QuestionDifficulty.medium)
+        .length;
+    final availableHard = questions
+        .where((q) => q.difficulty == QuestionDifficulty.hard)
+        .length;
+
+    if (easyCount > availableEasy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Not enough easy questions (available: $availableEasy)',
+          ),
+          backgroundColor: Colors.red,
+>>>>>>> 4f8b7139c2e35257fd233404af4a63349c388fd9
         ),
         backgroundColor: Colors. red,
       ),
@@ -241,6 +264,7 @@ Future<void> _save() async {
     return;
   }
 
+<<<<<<< HEAD
   setState(() => _isSaving = true);
   
   final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -319,6 +343,36 @@ Future<void> _save() async {
     if (mounted) {
       setState(() => _isSaving = false);
     }
+=======
+    if (mediumCount > availableMedium) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Not enough medium questions (available: $availableMedium)',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (hardCount > availableHard) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Not enough hard questions (available: $availableHard)',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+
+>>>>>>> 4f8b7139c2e35257fd233404af4a63349c388fd9
   }
 }
   @override
