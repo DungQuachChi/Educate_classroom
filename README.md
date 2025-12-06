@@ -1,20 +1,9 @@
 ================================================================================
-                    EDUCATE CLASSROOM - README
-                      Evaluation Documentation
-================================================================================
-
-Project: Educate Classroom (Learning Management System)
-Platform: Flutter (Web, Android, Windows, macOS)
-Date: December 5, 2025
-Student/Team: [Your Name/Team Name]
-
-================================================================================
                     DEPLOYMENT & ACCESS INFORMATION
 ================================================================================
 
-WEB APPLICATION (LIVE DEPLOYMENT):
-URL: [YOUR_WEB_URL_HERE]
-Example: https://educate-classroom. web.app
+WEB APPLICATION :
+URL:  https://educate-classroom.web.app
 Status: Active and ready for evaluation
 
 ANDROID APK:
@@ -27,12 +16,6 @@ WINDOWS BUILD:
 File: educate-classroom-windows-x64.zip
 Location: /windows/educate-classroom-windows-x64.zip
 Platform: Windows 10/11 (64-bit)
-
-MACOS BUILD (if applicable):
-File: educate-classroom-macos. zip
-Location: /macos/educate-classroom-macos. zip
-Platform: macOS 10.14+
-
 ================================================================================
                          TEST ACCOUNT CREDENTIALS
 ================================================================================
@@ -41,7 +24,7 @@ INSTRUCTOR ACCOUNT (Pre-loaded with test data):
 --------------------------------------------------
 Username: admin
 Password: admin
-Email: admin@educate. com
+Email: admin@educate.com
 
 PRE-LOADED DATA INCLUDES:
 - 3 courses with complete content
@@ -55,22 +38,16 @@ PRE-LOADED DATA INCLUDES:
 STUDENT ACCOUNTS (For testing student features):
 --------------------------------------------------
 Account 1:
-Username: student1
-Password: 123456
-Email: student1@educate.com
+Password: student123
+Email: le.cuong@edu.vn
 
 Account 2:
-Username: student2
-Password: 123456
-Email: student2@educate.com
+Password: student123
+Email: hoang.em@edu.vn
 
 Account 3:
-Username: student3
-Password: 123456
-Email: student3@educate.com
-
-NOTE: All student accounts are enrolled in available courses and have
-      sample submissions/quiz attempts.
+Password: student123
+Email: tran.binh@edu.vn
 
 ================================================================================
                     BUILDING & RUNNING INSTRUCTIONS

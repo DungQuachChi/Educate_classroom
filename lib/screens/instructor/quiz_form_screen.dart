@@ -52,7 +52,6 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
       final quizProvider = Provider.of<QuizProvider>(context, listen: false);
 
       groupProvider.loadGroupsByCourse(widget.courseId);
-      // ← FIXED: Force reload questions for fresh data
       quizProvider.forceReloadQuestions(widget.courseId);
     });
 
@@ -198,7 +197,6 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
       return;
     }
 
-    // ← FIXED: Get available counts from provider
     final quizProvider = Provider.of<QuizProvider>(context, listen: false);
     final questions = quizProvider.questions;
     final availableEasy = questions
@@ -258,7 +256,6 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
         hardCount: hardCount,
       );
 
-      // ← OPTIMIZED: Randomly select questions (now uses single query)
       final questionIds = await quizProvider.selectRandomQuestions(
         widget.courseId,
         structure,
@@ -502,7 +499,6 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ← FIXED: Quiz Structure with Consumer for real-time updates
             Consumer<QuizProvider>(
               builder: (context, quizProvider, child) {
                 // Calculate available questions from provider
