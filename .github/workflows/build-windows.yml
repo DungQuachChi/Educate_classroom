@@ -1,0 +1,46 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - main  # Or your default branch name
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Windows
+        run: flutter build windows --release
+      
+      - name: Create ZIP
+        run: |
+          cd build/windows/x64/runner/Release
+          Compress-Archive -Path * -DestinationPath educate-classroom-windows-x64.zip
+      
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: build/windows/x64/runner/Release/educate-classroom-windows-x64.zip
+          retention-days: 30
+      
+      - name: Upload Raw Build Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-files
+          path: build/windows/x64/runner/Release/
+          retention-days: 30

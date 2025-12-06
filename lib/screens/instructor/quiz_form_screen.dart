@@ -164,90 +164,163 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
     }
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+Future<void> _save() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    // Validate dates
-    if (_closeTime.isBefore(_openTime)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Close time must be after open time'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Validate question counts
-    final easyCount = int.parse(_easyCountController.text);
-    final mediumCount = int.parse(_mediumCountController.text);
-    final hardCount = int.parse(_hardCountController.text);
-
-    if (easyCount + mediumCount + hardCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one question'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // ← CHANGED: Get available counts from provider
-    final quizProvider = Provider.of<QuizProvider>(context, listen: false);
-    final questions = quizProvider.questions;
-    final availableEasy = questions
-        .where((q) => q.difficulty == QuestionDifficulty.easy)
-        .length;
-    final availableMedium = questions
-        .where((q) => q.difficulty == QuestionDifficulty.medium)
-        .length;
-    final availableHard = questions
-        .where((q) => q.difficulty == QuestionDifficulty.hard)
-        .length;
-
-    if (easyCount > availableEasy) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Not enough easy questions (available: $availableEasy)',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (mediumCount > availableMedium) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Not enough medium questions (available: $availableMedium)',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (hardCount > availableHard) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Not enough hard questions (available: $availableHard)',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-
+  // Validate dates
+  if (_closeTime.isBefore(_openTime)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Close time must be after open time'),
+        backgroundColor: Colors. red,
+      ),
+    );
+    return;
   }
 
+  // Validate question counts
+  final easyCount = int.parse(_easyCountController.text);
+  final mediumCount = int.parse(_mediumCountController. text);
+  final hardCount = int.parse(_hardCountController. text);
+
+  if (easyCount + mediumCount + hardCount == 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please add at least one question'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
+
+  final quizProvider = Provider.of<QuizProvider>(context, listen: false);
+  final questions = quizProvider.questions;
+  final availableEasy = questions
+      .where((q) => q.difficulty == QuestionDifficulty.easy)
+      .length;
+  final availableMedium = questions
+      . where((q) => q.difficulty == QuestionDifficulty. medium)
+      .length;
+  final availableHard = questions
+      .where((q) => q.difficulty == QuestionDifficulty.hard)
+      . length;
+
+  if (easyCount > availableEasy) {
+    ScaffoldMessenger. of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Not enough easy questions (available: $availableEasy)',
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  if (mediumCount > availableMedium) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Not enough medium questions (available: $availableMedium)',
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  if (hardCount > availableHard) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Not enough hard questions (available: $availableHard)',
+        ),
+        backgroundColor: Colors. red,
+      ),
+    );
+    return;
+  }
+
+  setState(() => _isSaving = true);
+  
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+  try {
+    final structure = QuizStructure(
+      easyCount: easyCount,
+      mediumCount: mediumCount,
+      hardCount: hardCount,
+    );
+
+    // Randomly select questions
+    final questionIds = await quizProvider.selectRandomQuestions(
+      widget.courseId,
+      structure,
+    );
+
+    if (isEditing) {
+      // Update existing quiz
+      await quizProvider.updateQuiz(
+        widget.quiz! .copyWith(
+          title: _titleController.text. trim(),
+          description: _descriptionController.text.trim(),
+          openTime: _openTime,
+          closeTime: _closeTime,
+          durationMinutes: int.parse(_durationController.text),
+          maxAttempts: _maxAttempts,
+          structure: structure,
+          questionIds: questionIds,
+          randomizeQuestions: _randomizeQuestions,
+          randomizeChoices: _randomizeChoices,
+          groupIds: _selectedGroupIds,
+        ),
+      );
+    } else {
+      // Create new quiz
+      final newQuiz = QuizModel(
+        id: '',
+        title: _titleController. text.trim(),
+        description: _descriptionController.text.trim(),
+        courseId: widget.courseId,
+        groupIds: _selectedGroupIds,
+        openTime: _openTime,
+        closeTime: _closeTime,
+        durationMinutes: int.parse(_durationController. text),
+        maxAttempts: _maxAttempts,
+        structure: structure,
+        questionIds: questionIds,
+        randomizeQuestions: _randomizeQuestions,
+        randomizeChoices: _randomizeChoices,
+        createdBy: authProvider.user!.uid,
+        createdAt: DateTime.now(),
+      );
+
+      await quizProvider.createQuiz(newQuiz);
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEditing ? 'Quiz updated successfully' : 'Quiz created successfully'),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors. red,
+        ),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
