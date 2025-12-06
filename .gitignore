@@ -42,7 +42,6 @@ app.*.map.json
 /android/app/release
 
 # Sensitive files
-lib/firebase_options.dart
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 .env
@@ -51,8 +50,6 @@ ios/Runner/GoogleService-Info.plist
 
 # Firebase
 .firebase/
-**/firebase_options.dart
-
 # Environment variables
 *.enveducate-classroom-windows-x64.zip
 *. zip
