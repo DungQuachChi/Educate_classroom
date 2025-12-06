@@ -9,9 +9,13 @@ import '../../models/question_model.dart';
 
 class QuizFormScreen extends StatefulWidget {
   final String courseId;
-  final QuizModel? quiz;
+  final QuizModel?  quiz;
 
-  const QuizFormScreen({super.key, required this.courseId, this.quiz});
+  const QuizFormScreen({
+    super.key,
+    required this. courseId,
+    this.quiz,
+  });
 
   @override
   State<QuizFormScreen> createState() => _QuizFormScreenState();
@@ -28,7 +32,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
 
   DateTime _openTime = DateTime.now();
   TimeOfDay _openTimeOfDay = TimeOfDay.now();
-  DateTime _closeTime = DateTime.now().add(const Duration(days: 1));
+  DateTime _closeTime = DateTime.now(). add(const Duration(days: 1));
   TimeOfDay _closeTimeOfDay = const TimeOfDay(hour: 23, minute: 59);
 
   int _maxAttempts = 1;
@@ -36,6 +40,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
   bool _randomizeQuestions = true;
   bool _randomizeChoices = true;
   bool _isSaving = false;
+
   bool get isEditing => widget.quiz != null;
 
   @override
@@ -47,25 +52,25 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
       final quizProvider = Provider.of<QuizProvider>(context, listen: false);
 
       groupProvider.loadGroupsByCourse(widget.courseId);
+      // ← FIXED: Force reload questions for fresh data
       quizProvider.forceReloadQuestions(widget.courseId);
     });
 
     if (isEditing) {
-      _titleController.text = widget.quiz!.title;
-      _descriptionController.text = widget.quiz!.description;
-      _durationController.text = widget.quiz!.durationMinutes.toString();
+      _titleController.text = widget.quiz! .title;
+      _descriptionController.text = widget.quiz! .description;
+      _durationController.text = widget.quiz! . durationMinutes.toString();
       _easyCountController.text = widget.quiz!.structure.easyCount.toString();
-      _mediumCountController.text = widget.quiz!.structure.mediumCount
-          .toString();
+      _mediumCountController.text = widget.quiz!.structure. mediumCount.toString();
       _hardCountController.text = widget.quiz!.structure.hardCount.toString();
 
       _openTime = widget.quiz!.openTime;
-      _openTimeOfDay = TimeOfDay.fromDateTime(widget.quiz!.openTime);
-      _closeTime = widget.quiz!.closeTime;
-      _closeTimeOfDay = TimeOfDay.fromDateTime(widget.quiz!.closeTime);
-      _maxAttempts = widget.quiz!.maxAttempts;
-      _selectedGroupIds = List.from(widget.quiz!.groupIds);
-      _randomizeQuestions = widget.quiz!.randomizeQuestions;
+      _openTimeOfDay = TimeOfDay.fromDateTime(widget. quiz!.openTime);
+      _closeTime = widget.quiz! .closeTime;
+      _closeTimeOfDay = TimeOfDay. fromDateTime(widget.quiz!. closeTime);
+      _maxAttempts = widget. quiz!.maxAttempts;
+      _selectedGroupIds = List. from(widget.quiz!.groupIds);
+      _randomizeQuestions = widget. quiz!.randomizeQuestions;
       _randomizeChoices = widget.quiz!.randomizeChoices;
     } else {
       _durationController.text = '60';
@@ -82,16 +87,16 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
     _durationController.dispose();
     _easyCountController.dispose();
     _mediumCountController.dispose();
-    _hardCountController.dispose();
+    _hardCountController. dispose();
     super.dispose();
   }
 
   Future<void> _selectOpenDate() async {
-    final DateTime? picked = await showDatePicker(
+    final DateTime?  picked = await showDatePicker(
       context: context,
       initialDate: _openTime,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime. now(),
+      lastDate: DateTime. now().add(const Duration(days: 365)),
     );
     if (picked != null) {
       setState(() {
@@ -107,7 +112,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
   }
 
   Future<void> _selectOpenTime() async {
-    final TimeOfDay? picked = await showTimePicker(
+    final TimeOfDay?  picked = await showTimePicker(
       context: context,
       initialTime: _openTimeOfDay,
     );
@@ -119,7 +124,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
           _openTime.month,
           _openTime.day,
           picked.hour,
-          picked.minute,
+          picked. minute,
         );
       });
     }
@@ -136,9 +141,9 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
       setState(() {
         _closeTime = DateTime(
           picked.year,
-          picked.month,
+          picked. month,
           picked.day,
-          _closeTimeOfDay.hour,
+          _closeTimeOfDay. hour,
           _closeTimeOfDay.minute,
         );
       });
@@ -164,79 +169,36 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
     }
   }
 
-Future<void> _save() async {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _save() async {
+    if (! _formKey.currentState! .validate()) return;
 
-  // Validate dates
-  if (_closeTime.isBefore(_openTime)) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Close time must be after open time'),
-        backgroundColor: Colors. red,
-      ),
-    );
-    return;
-  }
-
-  // Validate question counts
-  final easyCount = int.parse(_easyCountController.text);
-  final mediumCount = int.parse(_mediumCountController. text);
-  final hardCount = int.parse(_hardCountController. text);
-
-  if (easyCount + mediumCount + hardCount == 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please add at least one question'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
-  }
-
-  final quizProvider = Provider.of<QuizProvider>(context, listen: false);
-  final questions = quizProvider.questions;
-  final availableEasy = questions
-      .where((q) => q.difficulty == QuestionDifficulty.easy)
-      .length;
-  final availableMedium = questions
-      . where((q) => q.difficulty == QuestionDifficulty. medium)
-      .length;
-  final availableHard = questions
-      .where((q) => q.difficulty == QuestionDifficulty.hard)
-      . length;
-
-  if (easyCount > availableEasy) {
-    ScaffoldMessenger. of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Not enough easy questions (available: $availableEasy)',
+    // Validate dates
+    if (_closeTime. isBefore(_openTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Close time must be after open time'),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
+      );
+      return;
+    }
 
-  if (mediumCount > availableMedium) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Not enough medium questions (available: $availableMedium)',
+    // Validate question counts
+    final easyCount = int.parse(_easyCountController.text);
+    final mediumCount = int.parse(_mediumCountController. text);
+    final hardCount = int.parse(_hardCountController. text);
+
+    if (easyCount + mediumCount + hardCount == 0) {
+      ScaffoldMessenger.of(context). showSnackBar(
+        const SnackBar(
+          content: Text('Please add at least one question'),
+          backgroundColor: Colors.orange,
         ),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
+      );
+      return;
+    }
 
-<<<<<<< HEAD
-  if (hardCount > availableHard) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Not enough hard questions (available: $availableHard)',
-=======
-    // ← CHANGED: Get available counts from provider
+    // ← FIXED: Get available counts from provider
     final quizProvider = Provider.of<QuizProvider>(context, listen: false);
     final questions = quizProvider.questions;
     final availableEasy = questions
@@ -246,7 +208,7 @@ Future<void> _save() async {
         .where((q) => q.difficulty == QuestionDifficulty.medium)
         .length;
     final availableHard = questions
-        .where((q) => q.difficulty == QuestionDifficulty.hard)
+        .where((q) => q. difficulty == QuestionDifficulty.hard)
         .length;
 
     if (easyCount > availableEasy) {
@@ -256,94 +218,11 @@ Future<void> _save() async {
             'Not enough easy questions (available: $availableEasy)',
           ),
           backgroundColor: Colors.red,
->>>>>>> 4f8b7139c2e35257fd233404af4a63349c388fd9
-        ),
-        backgroundColor: Colors. red,
-      ),
-    );
-    return;
-  }
-
-<<<<<<< HEAD
-  setState(() => _isSaving = true);
-  
-  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-  try {
-    final structure = QuizStructure(
-      easyCount: easyCount,
-      mediumCount: mediumCount,
-      hardCount: hardCount,
-    );
-
-    // Randomly select questions
-    final questionIds = await quizProvider.selectRandomQuestions(
-      widget.courseId,
-      structure,
-    );
-
-    if (isEditing) {
-      // Update existing quiz
-      await quizProvider.updateQuiz(
-        widget.quiz! .copyWith(
-          title: _titleController.text. trim(),
-          description: _descriptionController.text.trim(),
-          openTime: _openTime,
-          closeTime: _closeTime,
-          durationMinutes: int.parse(_durationController.text),
-          maxAttempts: _maxAttempts,
-          structure: structure,
-          questionIds: questionIds,
-          randomizeQuestions: _randomizeQuestions,
-          randomizeChoices: _randomizeChoices,
-          groupIds: _selectedGroupIds,
         ),
       );
-    } else {
-      // Create new quiz
-      final newQuiz = QuizModel(
-        id: '',
-        title: _titleController. text.trim(),
-        description: _descriptionController.text.trim(),
-        courseId: widget.courseId,
-        groupIds: _selectedGroupIds,
-        openTime: _openTime,
-        closeTime: _closeTime,
-        durationMinutes: int.parse(_durationController. text),
-        maxAttempts: _maxAttempts,
-        structure: structure,
-        questionIds: questionIds,
-        randomizeQuestions: _randomizeQuestions,
-        randomizeChoices: _randomizeChoices,
-        createdBy: authProvider.user!.uid,
-        createdAt: DateTime.now(),
-      );
-
-      await quizProvider.createQuiz(newQuiz);
+      return;
     }
 
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Quiz updated successfully' : 'Quiz created successfully'),
-        ),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors. red,
-        ),
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isSaving = false);
-    }
-=======
     if (mediumCount > availableMedium) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -362,19 +241,95 @@ Future<void> _save() async {
           content: Text(
             'Not enough hard questions (available: $availableHard)',
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors. red,
         ),
       );
       return;
     }
 
     setState(() => _isSaving = true);
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    try {
+      final structure = QuizStructure(
+        easyCount: easyCount,
+        mediumCount: mediumCount,
+        hardCount: hardCount,
+      );
 
->>>>>>> 4f8b7139c2e35257fd233404af4a63349c388fd9
+      // ← OPTIMIZED: Randomly select questions (now uses single query)
+      final questionIds = await quizProvider.selectRandomQuestions(
+        widget.courseId,
+        structure,
+      );
+
+      if (isEditing) {
+        // Update existing quiz
+        await quizProvider.updateQuiz(
+          widget.quiz!.copyWith(
+            title: _titleController.text. trim(),
+            description: _descriptionController.text.trim(),
+            openTime: _openTime,
+            closeTime: _closeTime,
+            durationMinutes: int.parse(_durationController.text),
+            maxAttempts: _maxAttempts,
+            structure: structure,
+            questionIds: questionIds,
+            randomizeQuestions: _randomizeQuestions,
+            randomizeChoices: _randomizeChoices,
+            groupIds: _selectedGroupIds,
+          ),
+        );
+      } else {
+        // Create new quiz
+        final newQuiz = QuizModel(
+          id: '',
+          title: _titleController. text.trim(),
+          description: _descriptionController.text.trim(),
+          courseId: widget.courseId,
+          groupIds: _selectedGroupIds,
+          openTime: _openTime,
+          closeTime: _closeTime,
+          durationMinutes: int.parse(_durationController. text),
+          maxAttempts: _maxAttempts,
+          structure: structure,
+          questionIds: questionIds,
+          randomizeQuestions: _randomizeQuestions,
+          randomizeChoices: _randomizeChoices,
+          createdBy: authProvider.user!.uid,
+          createdAt: DateTime.now(),
+        );
+
+        await quizProvider.createQuiz(newQuiz);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEditing ? 'Quiz updated successfully' : 'Quiz created successfully',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors. red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,7 +350,7 @@ Future<void> _save() async {
               ),
               validator: (value) =>
                   value == null || value.trim().isEmpty ? 'Required' : null,
-              textCapitalization: TextCapitalization.words,
+              textCapitalization: TextCapitalization. words,
             ),
             const SizedBox(height: 16),
 
@@ -404,13 +359,13 @@ Future<void> _save() async {
               controller: _descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Description *',
-                hintText: 'Describe the quiz...',
+                hintText: 'Describe the quiz.. .',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.description),
                 alignLabelWithHint: true,
               ),
               validator: (value) =>
-                  value == null || value.trim().isEmpty ? 'Required' : null,
+                  value == null || value.trim(). isEmpty ? 'Required' : null,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
             ),
@@ -427,18 +382,18 @@ Future<void> _save() async {
                       'Open Time *',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight. bold,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: OutlinedButton. icon(
                             onPressed: _selectOpenDate,
                             icon: const Icon(Icons.calendar_today),
                             label: Text(
-                              DateFormat('MMM dd, yyyy').format(_openTime),
+                              DateFormat('MMM dd, yyyy'). format(_openTime),
                             ),
                           ),
                         ),
@@ -476,9 +431,9 @@ Future<void> _save() async {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: OutlinedButton. icon(
                             onPressed: _selectCloseDate,
-                            icon: const Icon(Icons.event),
+                            icon: const Icon(Icons. event),
                             label: Text(
                               DateFormat('MMM dd, yyyy').format(_closeTime),
                             ),
@@ -534,12 +489,12 @@ Future<void> _save() async {
                         value: 0,
                         child: Text('Unlimited'),
                       ),
-                      ...List.generate(5, (i) => i + 1).map(
+                      ... List.generate(5, (i) => i + 1).map(
                         (n) => DropdownMenuItem(value: n, child: Text('$n')),
                       ),
                     ],
                     onChanged: (value) {
-                      setState(() => _maxAttempts = value ?? 1);
+                      setState(() => _maxAttempts = value ??  1);
                     },
                   ),
                 ),
@@ -547,7 +502,7 @@ Future<void> _save() async {
             ),
             const SizedBox(height: 16),
 
-            // Quiz Structure - FIXED with Consumer
+            // ← FIXED: Quiz Structure with Consumer for real-time updates
             Consumer<QuizProvider>(
               builder: (context, quizProvider, child) {
                 // Calculate available questions from provider
@@ -559,7 +514,7 @@ Future<void> _save() async {
                     .where((q) => q.difficulty == QuestionDifficulty.medium)
                     .length;
                 final availableHard = questions
-                    .where((q) => q.difficulty == QuestionDifficulty.hard)
+                    . where((q) => q.difficulty == QuestionDifficulty. hard)
                     .length;
 
                 return Card(
@@ -572,7 +527,7 @@ Future<void> _save() async {
                           'Quiz Structure',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight. bold,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -583,104 +538,86 @@ Future<void> _save() async {
                         const SizedBox(height: 16),
 
                         // Easy Questions
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _easyCountController,
-                                decoration: InputDecoration(
-                                  labelText: 'Easy Questions',
-                                  border: const OutlineInputBorder(),
-                                  suffixText: '/ $availableEasy',
-                                  prefixIcon: const Icon(
-                                    Icons.circle,
-                                    color: Colors.green,
-                                    size: 12,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty)
-                                    return 'Required';
-                                  final count = int.tryParse(value);
-                                  if (count == null || count < 0)
-                                    return 'Invalid';
-                                  if (count > availableEasy) {
-                                    return 'Max $availableEasy available';
-                                  }
-                                  return null;
-                                },
-                              ),
+                        TextFormField(
+                          controller: _easyCountController,
+                          decoration: InputDecoration(
+                            labelText: 'Easy Questions',
+                            border: const OutlineInputBorder(),
+                            suffixText: '/ $availableEasy',
+                            prefixIcon: const Icon(
+                              Icons.circle,
+                              color: Colors. green,
+                              size: 12,
                             ),
-                          ],
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            final count = int.tryParse(value);
+                            if (count == null || count < 0) return 'Invalid';
+                            if (count > availableEasy) {
+                              return 'Max $availableEasy available';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 12),
 
                         // Medium Questions
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _mediumCountController,
-                                decoration: InputDecoration(
-                                  labelText: 'Medium Questions',
-                                  border: const OutlineInputBorder(),
-                                  suffixText: '/ $availableMedium',
-                                  prefixIcon: const Icon(
-                                    Icons.circle,
-                                    color: Colors.orange,
-                                    size: 12,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty)
-                                    return 'Required';
-                                  final count = int.tryParse(value);
-                                  if (count == null || count < 0)
-                                    return 'Invalid';
-                                  if (count > availableMedium) {
-                                    return 'Max $availableMedium available';
-                                  }
-                                  return null;
-                                },
-                              ),
+                        TextFormField(
+                          controller: _mediumCountController,
+                          decoration: InputDecoration(
+                            labelText: 'Medium Questions',
+                            border: const OutlineInputBorder(),
+                            suffixText: '/ $availableMedium',
+                            prefixIcon: const Icon(
+                              Icons. circle,
+                              color: Colors.orange,
+                              size: 12,
                             ),
-                          ],
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            final count = int.tryParse(value);
+                            if (count == null || count < 0) return 'Invalid';
+                            if (count > availableMedium) {
+                              return 'Max $availableMedium available';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 12),
 
                         // Hard Questions
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _hardCountController,
-                                decoration: InputDecoration(
-                                  labelText: 'Hard Questions',
-                                  border: const OutlineInputBorder(),
-                                  suffixText: '/ $availableHard',
-                                  prefixIcon: const Icon(
-                                    Icons.circle,
-                                    color: Colors.red,
-                                    size: 12,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty)
-                                    return 'Required';
-                                  final count = int.tryParse(value);
-                                  if (count == null || count < 0)
-                                    return 'Invalid';
-                                  if (count > availableHard) {
-                                    return 'Max $availableHard available';
-                                  }
-                                  return null;
-                                },
-                              ),
+                        TextFormField(
+                          controller: _hardCountController,
+                          decoration: InputDecoration(
+                            labelText: 'Hard Questions',
+                            border: const OutlineInputBorder(),
+                            suffixText: '/ $availableHard',
+                            prefixIcon: const Icon(
+                              Icons.circle,
+                              color: Colors.red,
+                              size: 12,
                             ),
-                          ],
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            final count = int.tryParse(value);
+                            if (count == null || count < 0) return 'Invalid';
+                            if (count > availableHard) {
+                              return 'Max $availableHard available';
+                            }
+                            return null;
+                          },
                         ),
                       ],
                     ),
@@ -761,7 +698,7 @@ Future<void> _save() async {
                         else
                           Wrap(
                             spacing: 8,
-                            children: groups.map((group) {
+                            children: groups. map((group) {
                               final isSelected = _selectedGroupIds.contains(
                                 group.id,
                               );
