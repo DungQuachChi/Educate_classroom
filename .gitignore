@@ -54,4 +54,6 @@ ios/Runner/GoogleService-Info.plist
 **/firebase_options.dart
 
 # Environment variables
-*.env
+*.enveducate-classroom-windows-x64.zip
+*. zip
+bin/
